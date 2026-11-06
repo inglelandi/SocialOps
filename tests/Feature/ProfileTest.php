@@ -51,6 +51,7 @@ test('email verification status is unchanged when the email address is unchanged
 });
 
 test('user can delete their account', function () {
+    User::factory()->create(); // a colleague: the last login cannot delete itself (ScanFixesClientsTest)
     $user = User::factory()->create();
 
     $response = $this

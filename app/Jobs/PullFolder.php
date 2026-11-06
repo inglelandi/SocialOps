@@ -10,6 +10,7 @@ use App\Models\Account;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Throwable;
 
 /** Files every photo and video the watched Google Drive or Dropbox folder holds that the inbox has not seen yet, like an upload. */
@@ -24,6 +25,16 @@ class PullFolder implements ShouldQueue
     public int $timeout = 1800;
 
     public function __construct(public Account $account) {}
+
+    /**
+     * One pull per folder at a time. The hourly run, "Check now" and "Watch folder" each queue one, a new worker starts
+     * every minute, and the queue hands a pull that runs longer than retry_after to a second worker: that second pull
+     * is dropped, the running one files everything.
+     */
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping((string) $this->account->id))->dontRelease()->expireAfter($this->timeout + 60)];
+    }
 
     public function handle(): void
     {
@@ -54,9 +65,10 @@ class PullFolder implements ShouldQueue
 
                 continue;
             }
-            $client->storeAsset($upload, ['note' => self::SOURCES[$this->account->platform].': '.$file['name'], 'uploaded_via' => $this->account->platform, 'source_id' => $prefix.$file['id']]);
+            // storeAsset files a source once: one filed meanwhile comes back as it is
+            $asset = $client->storeAsset($upload, ['note' => self::SOURCES[$this->account->platform].': '.$file['name'], 'uploaded_via' => $this->account->platform, 'source_id' => $prefix.$file['id']]);
             @unlink($tmp);
-            $new++;
+            $new += (int) $asset->wasRecentlyCreated;
         }
         $this->account->forceFill(['meta' => array_merge($this->account->meta ?? [], ['pulled_at' => now()->toDateTimeString(), 'files' => count($files), 'new' => $new])])->save();
     }

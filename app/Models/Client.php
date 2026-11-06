@@ -10,8 +10,11 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
+use Throwable;
 
 /**
  * A client account. Every other client-owned table (accounts, assets, posts)
@@ -41,23 +44,50 @@ class Client extends Model
         return $this->hasMany(Asset::class);
     }
 
-    /** File an upload in this client's inbox under the agency name and record it as an asset; $attrs adds pillar, tags, note, uploaded_via (Asset::sources(), link by default). */
+    /**
+     * File an upload in this client's inbox under the agency name and record it as an asset; $attrs adds pillar, tags, note,
+     * uploaded_via (Asset::sources(), link by default) and source_id. A file whose source_id is filed already is not filed
+     * again: the asset that has it comes back instead (wasRecentlyCreated false).
+     */
     public function storeAsset(UploadedFile $file, array $attrs = []): Asset
     {
         $disk = config('filesystems.default');
-        // never over another file: a name whose file is already on the disk is skipped
-        $name = AssetNamer::name($this, $file, $attrs['pillar'] ?? null, taken: fn (string $name) => Storage::disk($disk)->exists("clients/{$this->slug}/inbox/$name"));
+        $dir = "clients/{$this->slug}/inbox";
+        $source = $attrs['source_id'] ?? null;
+        for ($attempt = 1; ; $attempt++) {
+            if ($source !== null && $filed = $this->assets()->firstWhere('source_id', $source)) {
+                return $filed;
+            }
+            // never over another file: a name whose file is already on the disk is skipped
+            $name = AssetNamer::name($this, $file, $attrs['pillar'] ?? null, taken: fn (string $name) => Storage::disk($disk)->exists("$dir/$name"));
+            try {
+                // the row before the file: the unique name and source are taken first, so two uploads or folder pulls at once
+                // can neither write over each other's file nor file one twice
+                $asset = $this->assets()->create($attrs + [
+                    'name' => $name,
+                    'original_name' => $file->getClientOriginalName(),
+                    'disk' => $disk,
+                    'path' => "$dir/$name",
+                    'mime' => $file->getMimeType(),
+                    'size' => $file->getSize(),
+                    'kind' => str_starts_with((string) $file->getMimeType(), 'video/') ? 'video' : 'image',
+                    'uploaded_via' => 'link',
+                ]);
+            } catch (UniqueConstraintViolationException $e) {
+                if ($attempt < 3) {
+                    continue; // taken a moment ago by another upload (the next version), or the source filed meanwhile (returned above)
+                }
+                throw $e;
+            }
+            try {
+                Storage::disk($disk)->putFileAs($dir, $file, $name) ?: throw new RuntimeException("Could not write $dir/$name");
+            } catch (Throwable $e) {
+                $asset->delete();
+                throw $e;
+            }
 
-        return $this->assets()->create($attrs + [
-            'name' => $name,
-            'original_name' => $file->getClientOriginalName(),
-            'disk' => $disk,
-            'path' => Storage::disk($disk)->putFileAs("clients/{$this->slug}/inbox", $file, $name),
-            'mime' => $file->getMimeType(),
-            'size' => $file->getSize(),
-            'kind' => str_starts_with((string) $file->getMimeType(), 'video/') ? 'video' : 'image',
-            'uploaded_via' => 'link',
-        ]);
+            return $asset;
+        }
     }
 
     public function posts(): HasMany

@@ -26,6 +26,9 @@
                             <label for="env-{{ $name }}" class="font-mono text-xs text-gray-700">{{ $name }}</label>
                             @if ($name === 'APP_KEY')
                                 <x-text-input id="env-{{ $name }}" type="text" class="sm:col-span-2 block w-full text-sm" value="••••••••" disabled />
+                            @elseif (str_contains((string) $value, "\n"))
+                                {{-- a value of several lines (a key, a JSON) keeps its line breaks; the newline after the tag is the one the browser drops --}}
+                                <textarea id="env-{{ $name }}" name="values[{{ $name }}]" rows="{{ min(8, substr_count($value, "\n") + 1) }}" class="sm:col-span-2 block w-full rounded-md border-gray-300 font-mono text-xs shadow-sm focus:border-brand-500 focus:ring-brand-500" autocomplete="off" spellcheck="false">{{ "\n".$value }}</textarea>
                             @else
                                 <x-text-input id="env-{{ $name }}" name="values[{{ $name }}]" type="{{ preg_match('/KEY|SECRET|PASSWORD|TOKEN|WEBHOOK/', $name) ? 'password' : 'text' }}" class="sm:col-span-2 block w-full text-sm" :value="$value" autocomplete="off" />
                             @endif

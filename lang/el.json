@@ -1000,5 +1000,22 @@
     "This post is marked published and can no longer be edited. If it did not go out, use Not published after all above.": "Η ανάρτηση σημειώθηκε ως δημοσιευμένη και δεν επεξεργάζεται πια. Αν τελικά δεν ανέβηκε, πάτησε «Τελικά δεν δημοσιεύτηκε» πιο πάνω.",
     "Marked not published": "Σημειώθηκε ως μη δημοσιευμένη",
     "Next occurrence drafted:": "Ετοιμάστηκε πρόχειρο για την επόμενη επανάληψη:",
-    "Send it for review when it is ready.": "Στείλε τη για έλεγχο όταν είναι έτοιμη."
+    "Send it for review when it is ready.": "Στείλε τη για έλεγχο όταν είναι έτοιμη.",
+    "Nothing was saved: the .env file on the server does not load (:error). Fix it by hand, .env.backup holds the file before the last save.": "Δεν αποθηκεύτηκε τίποτα: το αρχείο .env στον server δεν φορτώνει (:error). Διόρθωσέ το με το χέρι· το .env.backup κρατά το αρχείο πριν την τελευταία αποθήκευση.",
+    "Nothing was saved, the .env file is as it was: :problem": "Δεν αποθηκεύτηκε τίποτα, το αρχείο .env έμεινε όπως ήταν: :problem",
+    "the new file would not load (:error).": "το νέο αρχείο δεν θα φόρτωνε (:error).",
+    "the value of :name would not read back as typed.": "η τιμή του :name δεν θα διαβαζόταν όπως γράφτηκε.",
+    "the value of :name would change.": "η τιμή του :name θα άλλαζε.",
+    "Only a login that sees every client can add clients.": "Μόνο χρήστης που βλέπει όλους τους πελάτες μπορεί να προσθέτει πελάτες.",
+    "Please choose at least one photo or video.": "Διαλέξτε τουλάχιστον μία φωτογραφία ή ένα βίντεο.",
+    "Up to :max files at a time, please send the rest separately.": "Έως :max αρχεία τη φορά· στείλτε τα υπόλοιπα χωριστά.",
+    "topic": "θέμα",
+    "season or event field": "πεδίο εποχής ή εκδήλωσης",
+    "note": "σημείωμα",
+    "A file did not arrive whole. It may be bigger than the server takes (:mb MB a file): try it on its own, or send a smaller version.": "Ένα αρχείο δεν έφτασε ολόκληρο. Ίσως είναι μεγαλύτερο από όσο δέχεται ο server (:mb MB ανά αρχείο): δοκιμάστε να το στείλετε μόνο του ή στείλτε μια μικρότερη εκδοχή.",
+    "Too much at once": "Πάρα πολλά μαζί",
+    "That was more than the server takes in one send, so nothing arrived. Please send fewer files at a time, or smaller videos.": "Ήταν περισσότερα από όσα δέχεται ο server σε μία αποστολή, οπότε δεν έφτασε τίποτα. Στείλτε λιγότερα αρχεία τη φορά ή μικρότερα βίντεο.",
+    "Back to the upload page": "Πίσω στη σελίδα αποστολής",
+    "This is the only admin login. Make another login admin on the Staff page first.": "Αυτός είναι ο μόνος διαχειριστής. Κάνε πρώτα διαχειριστή έναν άλλο χρήστη στη σελίδα Προσωπικό.",
+    "This is the last login: without one, anyone could make a new one on the setup page. Add another login on the Staff page first.": "Αυτός είναι ο τελευταίος χρήστης: χωρίς κανέναν, οποιοσδήποτε θα μπορούσε να φτιάξει νέο στη σελίδα εγκατάστασης. Πρόσθεσε πρώτα άλλον χρήστη στη σελίδα Προσωπικό."
 }

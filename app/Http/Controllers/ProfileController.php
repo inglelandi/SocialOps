@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -47,6 +48,15 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
+        // without an admin nobody reaches Settings or hands the flag on, and without any login /setup opens to anyone on the internet
+        $last = match (true) {
+            $user->is_admin && User::where('is_admin', true)->count() === 1 => __('This is the only admin login. Make another login admin on the Staff page first.'),
+            User::count() === 1 => __('This is the last login: without one, anyone could make a new one on the setup page. Add another login on the Staff page first.'),
+            default => null,
+        };
+        if ($last) {
+            return back()->withErrors(['password' => $last], 'userDeletion');
+        }
 
         Auth::logout();
 

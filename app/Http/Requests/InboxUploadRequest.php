@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 
 class InboxUploadRequest extends FormRequest
@@ -33,9 +34,27 @@ class InboxUploadRequest extends FormRequest
         ];
     }
 
+    /** The client reads these in their own language: no field names such as "files.0" in them. */
     public function messages(): array
     {
-        return ['files.*.mimetypes' => self::typeMessage(), 'files.*.max' => self::sizeMessage()];
+        return [
+            'files.required' => __('Please choose at least one photo or video.'),
+            'files.max' => __('Up to :max files at a time, please send the rest separately.'),
+            'files.*.uploaded' => self::uploadMessage(),
+            'files.*.mimetypes' => self::typeMessage(),
+            'files.*.max' => self::sizeMessage(),
+        ];
+    }
+
+    public function attributes(): array
+    {
+        return ['pillar' => __('topic'), 'season' => __('season or event field'), 'note' => __('note')];
+    }
+
+    /** A file the server refused before it arrived whole (bigger than PHP's upload_max_filesize, or cut off). */
+    public static function uploadMessage(): string
+    {
+        return __('A file did not arrive whole. It may be bigger than the server takes (:mb MB a file): try it on its own, or send a smaller version.', ['mb' => (int) floor(UploadedFile::getMaxFilesize() / 1048576)]);
     }
 
     public static function typeMessage(): string
