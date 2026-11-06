@@ -990,5 +990,13 @@
     "Did you post it in the app? This marks it published.": "Την ανέβασες στην εφαρμογή; Θα σημειωθεί ως δημοσιευμένη.",
     "No caption written for this platform.": "Δεν έχει γραφτεί λεζάντα για αυτή την πλατφόρμα.",
     "The placeholder :placeholder is not in the client profile: fix it on the post before pasting.": "Το πεδίο :placeholder δεν υπάρχει στο προφίλ του πελάτη: διόρθωσέ το στην ανάρτηση πριν την επικόλληση.",
-    "Over the limit of :max characters: shorten it on the post.": "Πάνω από το όριο των :max χαρακτήρων: συντόμευσέ τη στην ανάρτηση."
+    "Over the limit of :max characters: shorten it on the post.": "Πάνω από το όριο των :max χαρακτήρων: συντόμευσέ τη στην ανάρτηση.",
+    "This post went out through the platform, so it stays published. Withdraw it instead.": "Η ανάρτηση ανέβηκε μέσω της πλατφόρμας, οπότε μένει δημοσιευμένη. Για να κατέβει, χρησιμοποίησε την Απόσυρση.",
+    "This post is no longer waiting for your answer on this page: it was answered already, or we sent it to you again in a newer link. Nothing was changed.": "Αυτή η ανάρτηση δεν περιμένει πια απάντηση σε αυτή τη σελίδα: έχει ήδη απαντηθεί ή σας τη στείλαμε ξανά σε νεότερο σύνδεσμο. Δεν άλλαξε τίποτα.",
+    "Not published after all": "Τελικά δεν δημοσιεύτηκε",
+    "Back to Scheduled, or Approved when it has no date, so it can be edited again": "Πίσω σε Προγραμματισμένο, ή σε Εγκεκριμένο όταν δεν έχει ημερομηνία, ώστε να επεξεργάζεται ξανά",
+    "This post is marked published and can no longer be edited. If it did not go out, use Not published after all above.": "Η ανάρτηση σημειώθηκε ως δημοσιευμένη και δεν επεξεργάζεται πια. Αν τελικά δεν ανέβηκε, πάτησε «Τελικά δεν δημοσιεύτηκε» πιο πάνω.",
+    "Marked not published": "Σημειώθηκε ως μη δημοσιευμένη",
+    "Next occurrence drafted:": "Ετοιμάστηκε πρόχειρο για την επόμενη επανάληψη:",
+    "Send it for review when it is ready.": "Στείλε τη για έλεγχο όταν είναι έτοιμη."
 }

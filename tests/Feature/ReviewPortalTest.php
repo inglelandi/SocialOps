@@ -78,8 +78,9 @@ test('the client approves or requests changes from the link; approval schedules,
         ->and($review->posts()->find($this->undated->id)->pivot->comment)->toBe('Use the sunset photo');
     Mail::assertSent(ReviewMail::class, fn (ReviewMail $mail) => $mail->kind === 'completed' && $mail->hasTo($this->user->email));
 
-    // decided posts cannot be decided again, and the answers show on both sides
-    $this->post($url, ['post_id' => $this->dated->id, 'decision' => 'changes_requested', 'comment' => 'x', 'name' => 'Maria'])->assertSessionHasErrors('post_id');
+    // decided posts cannot be decided again (a friendly line, ScanFixesPostsTest), and the answers show on both sides
+    $this->post($url, ['post_id' => $this->dated->id, 'decision' => 'changes_requested', 'comment' => 'x', 'name' => 'Maria'])->assertSessionHasNoErrors()->assertSessionHas('notice');
+    expect($this->dated->fresh()->state)->toBe(PostState::Scheduled);
     $this->get($url)->assertSee('All answered')->assertSee('Use the sunset photo');
     $this->actingAs($this->user)->get(route('posts.edit', $this->undated))->assertSee('Use the sunset photo');
 });

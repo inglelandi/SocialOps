@@ -58,6 +58,8 @@ class ReviewController extends Controller
     /**
      * One review for these posts of the client (already checked as SENDABLE): they go In Review and the approvers get the link.
      * A client without approvers gets the review and the link all the same; the staff send the link themselves.
+     * A post still waiting in an older open review leaves it and lives only in the new link, so the client cannot approve it
+     * in one link and ask for changes in the other; an older review left with nothing to decide is closed by reviews:remind.
      *
      * @param  list<int>  $postIds
      */
@@ -67,6 +69,8 @@ class ReviewController extends Controller
 
         // shortcut: multi_level is treated as one level (all approvers get the same link), split into levels when a client needs it
         $review = DB::transaction(function () use ($client, $postIds, $approval, $userId) {
+            DB::table('post_review')->whereIn('post_id', $postIds)->whereNull('decision')
+                ->whereIn('review_id', $client->reviews()->whereNull('completed_at')->select('id'))->delete();
             $review = $client->reviews()->create(['due_at' => now()->addHours($approval['sla_hours']), 'created_by' => $userId]);
             $review->posts()->attach($postIds);
             Post::whereIn('id', $postIds)->where('state', '!=', PostState::InReview)->each(fn (Post $post) => $post->transitionTo(PostState::InReview));

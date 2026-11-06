@@ -33,7 +33,8 @@ class PostController extends Controller
 {
     public function create(Client $client): View
     {
-        $post = new Post(['platforms' => [], 'format' => 'feed', 'scheduled_at' => request('date') ? request('date').' 10:00' : null]);
+        // the calendar's "+" passes the day; a date the address mangled is left out, not an error page
+        $post = new Post(['platforms' => [], 'format' => 'feed', 'scheduled_at' => CalendarController::day(request('date'))?->setTime(10, 0)]);
 
         return view('posts.create', ['client' => $client, 'post' => $post, 'variants' => collect()]);
     }
@@ -209,6 +210,8 @@ class PostController extends Controller
     {
         $to = PostState::from($request->validate(['state' => ['required', Rule::enum(PostState::class)]])['state']);
         abort_if($to->needsPublishing() && ! config('features.publishing'), 404);
+        $back = $to === $post->state->back(); // "Not published after all"
+        $repeated = $post->settings['repeated_as'] ?? null;
 
         try {
             if ($to === PostState::Published && $post->state === PostState::Approved && $post->scheduled_at) {
@@ -218,13 +221,17 @@ class PostController extends Controller
         } catch (InvalidTransition|PublishFailed $e) {
             return back()->withErrors(['state' => $e->getMessage()]);
         }
-        $status = 'post-'.str_replace('_', '-', $post->state->value);
+        $flash = [
+            'status' => $back ? 'marked-not-published' : 'post-'.str_replace('_', '-', $post->state->value),
+            // a repeating post marked published drafted its next occurrence (Post::spawnRepeat()): the page names it
+            'repeat' => ($post->settings['repeated_as'] ?? null) !== $repeated ? Post::find($post->settings['repeated_as'])?->only(['id', 'name']) : null,
+        ];
         $return = (string) $request->input('return');
 
         // the Post today page sends its own address along, to stay on the list; nothing else is followed
         return $return === route('today') || str_starts_with($return, route('today').'?')
-            ? redirect()->to($return)->with(['status' => $status, 'done' => $post->id])
-            : redirect()->route('posts.edit', $post)->with('status', $status);
+            ? redirect()->to($return)->with($flash + ['done' => $post->id])
+            : redirect()->route('posts.edit', $post)->with($flash);
     }
 
     /**
@@ -333,8 +340,16 @@ class PostController extends Controller
     {
         $zip = new ZipArchive;
         $zip->open($tmp = tempnam(sys_get_temp_dir(), 'post'), ZipArchive::OVERWRITE);
+        $missing = [];
         foreach ($post->assets as $asset) {
-            $zip->addFile(Storage::disk($asset->disk)->path($asset->path), $asset->name); // shortcut: local disk only, use addFromString(get()) for S3
+            $disk = Storage::disk($asset->disk);
+            if (! $disk->exists($asset->path)) { // a file gone from the disk is named in captions.txt; the rest still exports
+                $missing[] = $asset->name;
+
+                continue;
+            }
+            // a local file goes in from the disk (videos are big), any other disk (S3) through its contents
+            is_file($local = $disk->path($asset->path)) ? $zip->addFile($local, $asset->name) : $zip->addFromString($asset->name, (string) $disk->get($asset->path));
         }
         foreach (array_keys(array_filter($post->settings['design'] ?? [])) as $lang) {
             try {
@@ -344,6 +359,9 @@ class PostController extends Controller
             }
         }
         $text = "{$post->name}\nScheduled: ".($post->scheduled_at?->format('d-m-Y H:i') ?? '-')."\nState: {$post->state->label()}\nBrief: {$post->brief}\nMedia: {$post->assets->pluck('name')->join(', ')}\n";
+        if ($missing) {
+            $text .= 'Missing, not in this ZIP (the file is gone from the server, upload it again): '.implode(', ', $missing)."\n";
+        }
         foreach (array_filter($post->settings['design'] ?? []) as $lang => $design) {
             $text .= "\n== Design text ".strtoupper($lang)." ==\n{$design}\n";
         }
@@ -380,8 +398,9 @@ class PostController extends Controller
     {
         $text = $post->settings['design'][$lang] ?? throw new \RuntimeException("No design text in {$lang}");
         $image = $post->assets->firstWhere('kind', 'image') ?? throw new \RuntimeException('No image on this post');
+        $bytes = Storage::disk($image->disk)->get($image->path) ?? throw new \RuntimeException('The image file is missing');
 
-        return TextOverlay::render(Storage::disk($image->disk)->get($image->path), $text);
+        return TextOverlay::render($bytes, $text);
     }
 
     /** @return array<int, array{position: int}> */

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Alerts\Slack;
 use App\Http\Requests\PostRequest;
 use App\Posts\InvalidTransition;
 use App\Posts\PostNamer;
@@ -228,33 +229,57 @@ class Post extends Model
         return $this->belongsToMany(Review::class)->withPivot(Review::PIVOT)->latest('reviews.created_at');
     }
 
-    /** Move to the next state; approval with a date on the calendar schedules the post at once. */
+    /**
+     * Move to the next state; approval with a date on the calendar schedules the post at once. Reaching Published, by the
+     * drivers or by hand, drafts the next occurrence of a repeating post (once, spawnRepeat()). The way back from Published
+     * (PostState::back(), "Not published after all") is only for a post that never went out through a platform API.
+     */
     public function transitionTo(PostState $to): void
     {
         if (! $this->state->canTransitionTo($to)) {
             throw new InvalidTransition("Cannot go from {$this->state->label()} to {$to->label()}.");
         }
+        $back = $to === $this->state->back();
+        if ($back && $this->external_ids) {
+            throw new InvalidTransition(__('This post went out through the platform, so it stays published. Withdraw it instead.'));
+        }
 
-        if ($to === PostState::Approved && $this->scheduled_at) {
+        // a post sent back whose time has passed waits Approved while posting is on, so the queue does not publish it at once
+        if ($to === PostState::Approved && $this->scheduled_at && ! ($back && config('features.publishing') && $this->scheduled_at->isPast())) {
             $to = PostState::Scheduled;
         }
 
         $this->forceFill([
             'state' => $to,
-            'published_at' => $to === PostState::Published ? now() : $this->published_at,
+            'published_at' => match (true) {
+                $to === PostState::Published => now(),
+                $back => null,
+                default => $this->published_at,
+            },
         ])->save();
+
+        if ($to === PostState::Published && ($next = $this->spawnRepeat())) {
+            Slack::send("{$this->client->name}: next {$this->settings['repeat']} repeat drafted, {$next->name}, send it to review\n".route('posts.edit', $next));
+        }
     }
 
-    /** Content went back to review after a change to a locked post (used by the composer for variants). */
-    /** A post set to repeat: its next occurrence as a new Draft a week or a month later, same content, captions and assets. It goes through approval again. */
+    /**
+     * A post set to repeat: its next occurrence as a new Draft a week or a month later, same content, captions and assets.
+     * It goes through approval again. Only once per post: the copy's id is kept in `settings.repeated_as`, so marking a post
+     * published again after "Not published after all" drafts no second copy (and the way back leaves the copy alone).
+     */
     public function spawnRepeat(): ?Post
     {
         $repeat = $this->settings['repeat'] ?? null;
-        if (! $repeat || ! $this->scheduled_at) {
+        if (! $repeat || ! $this->scheduled_at || isset($this->settings['repeated_as'])) {
             return null;
         }
 
-        return $this->duplicate(null, $repeat === 'weekly' ? $this->scheduled_at->copy()->addWeek() : $this->scheduled_at->copy()->addMonthNoOverflow());
+        $next = $this->duplicate(null, $repeat === 'weekly' ? $this->scheduled_at->copy()->addWeek() : $this->scheduled_at->copy()->addMonthNoOverflow());
+        // quietly: bookkeeping, not a content change that would send a locked post back to review
+        $this->forceFill(['settings' => ['repeated_as' => $next->id] + $this->settings])->saveQuietly();
+
+        return $next;
     }
 
     /** A Draft copy with the captions and settings: for the same client with its media too, for another client without (the media stays with its owner). */
@@ -268,7 +293,7 @@ class Post extends Model
             'format' => $this->format,
             'pillar' => $this->pillar,
             'brief' => $this->brief,
-            'settings' => $this->settings,
+            'settings' => $this->settings === null ? null : Arr::except($this->settings, 'repeated_as'), // the copy repeats on its own
             'scheduled_at' => $date,
             'created_by' => auth()->id() ?? $this->created_by,
         ]);
@@ -307,6 +332,7 @@ class Post extends Model
         return $settings;
     }
 
+    /** Content went back to review after a change to a locked post (captions or media; a settings change goes through the updating hook). */
     public function reopenForReview(): void
     {
         if ($this->state->isLocked() && $this->state !== PostState::Published) {

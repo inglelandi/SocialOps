@@ -16,7 +16,8 @@
         const fields = @json((object) ($client->profile['fields'] ?? []));
         const kinds = @json((object) $client->assets->pluck('kind', 'id')->all());
         const urls = { image: @json(route('assets.thumb', ['asset' => 0])), video: @json(route('assets.download', ['asset' => 0])) };
-        const fill = s => s.replace(/\{\{\s*([a-z0-9_]+)\s*\}\}/gi, (m, k) => fields[k.toLowerCase()] ?? m);
+        // a placeholder name may be Greek (τηλέφωνο), as Client::substitute() and the counter read it
+        const fill = s => s.replace(/\{\{\s*([\p{L}\p{N}_]+)\s*\}\}/gu, (m, k) => fields[k.toLowerCase()] ?? m);
         const tags = v => [...new Set(v.trim().split(/\s+/).filter(Boolean).map(t => '#' + t.replace(/^#/, '')))].join(' ');
         const update = () => {
             const on = [...form.querySelectorAll('input[name="platforms[]"]:checked')].map(b => b.value);

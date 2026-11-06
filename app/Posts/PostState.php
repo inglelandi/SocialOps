@@ -3,7 +3,8 @@
 namespace App\Posts;
 
 /**
- * Idea → Draft → In Review → Changes Requested → Approved (locked) → Scheduled → Published | Failed | Manual-Needed, Published → Withdrawn.
+ * Idea → Draft → In Review → Changes Requested → Approved (locked) → Scheduled → Published | Failed | Manual-Needed, Published → Withdrawn,
+ * and back() for a post marked published by hand that did not go out (Published → Approved, or Scheduled when it has a date).
  * Approved and later states are locked: editing content sends the post back to In Review.
  */
 enum PostState: string
@@ -34,7 +35,17 @@ enum PostState: string
 
     public function canTransitionTo(self $to): bool
     {
-        return in_array($to->value, self::TRANSITIONS[$this->value], true);
+        return in_array($to->value, self::TRANSITIONS[$this->value], true) || $to === $this->back();
+    }
+
+    /**
+     * The way back from a state set by hand by mistake, kept out of next(): "Not published after all" takes a post marked
+     * published back to Approved (Scheduled when it has a date). Post::transitionTo() allows it only for a post that never
+     * went out through a platform API (no external id).
+     */
+    public function back(): ?self
+    {
+        return $this === self::Published ? self::Approved : null;
     }
 
     /** @return list<self> */

@@ -81,6 +81,9 @@ return [
 
     'locale' => env('APP_LOCALE', 'el'),
 
+    // the same default, kept for mails to staff without a language of their own: SetLocale changes app.locale per request
+    'default_locale' => env('APP_LOCALE', 'el'),
+
     // the interface languages offered by the switch; lang/el.json holds the Greek
     'locales' => ['en' => 'English', 'el' => 'Ελληνικά'],
 

@@ -56,7 +56,7 @@
                                     <p class="mt-1 text-xs text-gray-600">@if ($client->priority)<span class="{{ $priorities[$client->priority] ?? '' }}">{{ __(\App\Models\Client::PRIORITIES[$client->priority]) }}</span>@endif @if ($client->priority && $client->owner) · @endif{{ $client->owner }}</p>
                                 </td>
                                 <td class="whitespace-nowrap px-4 py-3">
-                                    @if ($client->plan_due)<span class="{{ $client->plan_due->isPast() ? 'text-red-600 font-medium' : '' }}">{{ $client->plan_due->format('d-m-Y') }}</span>@else <span class="text-gray-500">—</span> @endif
+                                    @if ($client->plan_due)<span class="{{ $client->plan_due->lt(today()) ? 'text-red-600 font-medium' : '' }}">{{ $client->plan_due->format('d-m-Y') }}</span>@else <span class="text-gray-500">—</span> @endif
                                 </td>
                                 <td class="whitespace-nowrap px-4 py-3 text-xs text-gray-700">
                                     @if ($client->posts_per_week !== null || $client->stories_per_week !== null)<p>{{ __(':posts posts, :stories stories a week', ['posts' => $client->posts_per_week ?? 0, 'stories' => $client->stories_per_week ?? 0]) }}</p>@endif

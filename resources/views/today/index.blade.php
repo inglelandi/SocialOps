@@ -54,6 +54,7 @@
             @if (session('done'))
                 <p class="text-sm text-green-600" role="status">{{ __('Marked published.') }}</p>
             @endif
+            @include('posts._repeat-drafted')
             @error('state') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
 
             @forelse ($todo as $row)
