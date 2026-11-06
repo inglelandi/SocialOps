@@ -2,6 +2,7 @@
 
 namespace App\Planning;
 
+use App\Http\Requests\PostRequest;
 use App\Models\Client;
 use App\Models\Post;
 use App\Models\Report;
@@ -18,23 +19,75 @@ use Illuminate\Support\Facades\DB;
  */
 class PlanWriter
 {
-    /** @param  array  $result  gets each post's name and url; the sheet is returned */
+    /**
+     * All or nothing: a sheet that fails to file takes its Drafts with it, so a retried job does not file them twice.
+     *
+     * @param  array  $result  gets each post's name, url, time and the day it has on the calendar; the sheet is returned
+     */
     public function write(Client $client, array &$result, bool $fileBrief): Report
     {
-        DB::transaction(function () use ($client, &$result) {
+        return DB::transaction(function () use ($client, &$result, $fileBrief) {
             foreach ($result['posts'] as &$post) {
                 $draft = $this->createDraft($client, $post);
                 $post['name'] = $draft->name;
                 $post['url'] = route('posts.edit', $draft);
+                // the Draft's own day, which a taken or missing slot can move: the sheet, the Word file and the calendar say the same
+                if ($draft->scheduled_at->toDateString() !== $post['date']) {
+                    $post['planned_date'] = $post['date'];
+                    $post['date'] = $draft->scheduled_at->toDateString();
+                }
+                $post['time'] = $draft->scheduled_at->format('H:i');
             }
-        });
+            unset($post);
+            $dates = array_column($result['posts'], 'date');
+            $result['window'] = ['start' => min([$result['window']['start'], ...$dates]), 'end' => max([$result['window']['end'], ...$dates])];
 
-        $t = fn (string $key, array $replace = []) => __($key, $replace, $client->uiLocale()); // the sheet is read by the team and the client
-        if ($fileBrief && trim($result['trend_brief'] ?? '') !== '') {
-            $client->reports()->create(['kind' => 'trend_brief', 'title' => $t('Trend brief :date', ['date' => now()->format('d-m-Y')]), 'body' => $result['trend_brief']]);
+            $t = fn (string $key, array $replace = []) => __($key, $replace, $client->uiLocale()); // the sheet is read by the team and the client
+            if ($fileBrief && trim($result['trend_brief'] ?? '') !== '') {
+                $client->reports()->create(['kind' => 'trend_brief', 'title' => $t('Trend brief :date', ['date' => now()->format('d-m-Y')]), 'body' => $result['trend_brief']]);
+            }
+
+            return $client->reports()->create(['kind' => 'plan', 'title' => $t('Content batch :start to :end', self::shown($result['window'])), 'body' => $this->reviewSheet($result, $t), 'meta' => $result]);
+        });
+    }
+
+    /**
+     * What the post form would refuse in a plan (PostRequest's limits), so a Draft never holds text it cannot save again:
+     * one message per field, keyed by its path in the plan and naming the post, for the caller to shorten and file again.
+     * The texts are strings already (SavePlan's rules).
+     *
+     * @return array<string, string>
+     */
+    public static function overLimits(array $posts): array
+    {
+        $errors = [];
+        foreach ($posts as $i => $post) {
+            $captions = (array) ($post['captions'] ?? []);
+            $which = 'Post '.($i + 1).' ("'.($post['title'] ?? '').'", '.($post['date'] ?? '').')';
+            $over = fn (string $what, ?string $text, int $max) => ($length = mb_strlen((string) PostRequest::lines($text))) > $max ? "$which: $what is $length characters, over the limit of $max. Shorten it and call save-plan again." : null;
+            foreach (self::languages($captions) as $lang) {
+                foreach ((array) ($post['platforms'] ?? []) as $platform) { // only the post's platforms become captions, as on the form
+                    $errors["posts.$i.captions.$lang.$platform"] = $over('the '.ucfirst($platform).' caption in '.strtoupper($lang), is_array($captions[$lang]) ? ($captions[$lang][$platform] ?? null) : null, PostRequest::CAPTION_MAX[$platform] ?? 5000);
+                }
+            }
+            foreach ((array) ($captions['alt_text'] ?? []) as $lang => $text) {
+                $errors["posts.$i.captions.alt_text.$lang"] = $over('the alt text in '.strtoupper($lang), $text, PostRequest::ALT_TEXT_MAX);
+            }
+            foreach ((array) ($captions['design'] ?? []) as $lang => $text) {
+                $errors["posts.$i.captions.design.$lang"] = $over('the design text in '.strtoupper($lang), $text, PostRequest::DESIGN_MAX);
+            }
+            foreach ((array) ($captions['hashtags'] ?? []) as $n => $tag) {
+                $errors["posts.$i.captions.hashtags.$n"] = $over("hashtag $tag", $tag, PostRequest::HASHTAG_MAX);
+            }
         }
 
-        return $client->reports()->create(['kind' => 'plan', 'title' => $t('Content batch :start to :end', $result['window']), 'body' => $this->reviewSheet($result, $t), 'meta' => $result]);
+        return array_filter($errors);
+    }
+
+    /** The window's ISO dates (the report's meta keeps them so) as people read them: DD-MM-YYYY. */
+    private static function shown(array $window): array
+    {
+        return array_map(fn (string $date) => CarbonImmutable::parse($date)->format('d-m-Y'), $window);
     }
 
     /** The two-letter keys of a captions map, in the client's language order. */
@@ -78,7 +131,7 @@ class PlanWriter
 
     private function reviewSheet(array $result, Closure $t): string
     {
-        $md = '# '.$t('Content batch: :client, :start to :end', ['client' => $result['client']] + $result['window'])."\n\n";
+        $md = '# '.$t('Content batch: :client, :start to :end', ['client' => $result['client']] + self::shown($result['window']))."\n\n";
         $md .= $t('Drafted :count posts for :platforms. Every caption needs a human review before it goes to the client.', ['count' => count($result['posts']), 'platforms' => implode(', ', $result['platforms'])])."\n\n";
         foreach ($result['warnings'] as $warning) {
             $md .= '> '.$t('Warning:')." {$warning}\n";
@@ -86,7 +139,10 @@ class PlanWriter
 
         foreach ($result['posts'] as $i => $post) {
             $captions = $post['captions'] ?? [];
-            $md .= "\n## ".($i + 1).". {$post['title']} ({$post['date']})\n\n";
+            $md .= "\n## ".($i + 1).". {$post['title']} (".trim(CarbonImmutable::parse($post['date'])->format('d-m-Y').' '.($post['time'] ?? '')).")\n\n";
+            if (isset($post['planned_date'])) {
+                $md .= '- '.$t('Planned for :date; the calendar has it on the next free posting slot.', ['date' => CarbonImmutable::parse($post['planned_date'])->format('d-m-Y')])."\n";
+            }
             $md .= '- '.$t('Name:')." `{$post['name']}`\n- ".$t('Platforms:').' '.implode(', ', $post['platforms']).' | '.$t('Format:')." {$post['format']} | ".$t('Pillar:').' '.($post['pillar'] ?? '')."\n";
             $md .= '- '.$t('Trend:').' '.($post['trend_signal'] ?? $t('evergreen')).' | '.$t('Why now:')." {$post['why_now']}\n";
             $md .= '- '.$t('Angle:')." {$post['angle']}\n- ".$t('Asset:')." {$post['asset_brief']}\n";

@@ -2,6 +2,7 @@
 
 namespace App\Planning;
 
+use App\Clients\ClientProfile;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
 
@@ -25,8 +26,8 @@ class PlanRequest
         if ($count < 1 || $count > self::MAX_POSTS) {
             throw new InvalidArgumentException('Posts per batch must be between 1 and '.self::MAX_POSTS);
         }
-        if ($platforms === [] || array_diff($platforms, self::accounts($profile)) !== []) {
-            throw new InvalidArgumentException('Platforms must be a non-empty subset of the client accounts: '.implode(', ', self::accounts($profile)));
+        if ($platforms === [] || array_diff($platforms, self::plannable($profile)) !== []) {
+            throw new InvalidArgumentException('Platforms must be a non-empty subset of the client accounts: '.implode(', ', self::plannable($profile)));
         }
         if ($to->lt($from)) {
             throw new InvalidArgumentException('The publishing window ends before it starts');
@@ -37,6 +38,12 @@ class PlanRequest
     public static function accounts(array $profile): array
     {
         return array_keys(array_filter($profile['accounts'] ?? []));
+    }
+
+    /** What a plan may be for: the platforms with an account in the profile, else every platform, so a client whose handles are not in yet can still be planned. */
+    public static function plannable(array $profile): array
+    {
+        return self::accounts($profile) ?: ClientProfile::PLATFORMS;
     }
 
     public function promptVars(): array

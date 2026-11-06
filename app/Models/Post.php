@@ -188,7 +188,8 @@ class Post extends Model
     public function scopeFilter(Builder $q, array $filters): Builder
     {
         return $q->when($filters['from'] ?? null, fn ($q, $d) => $q->where('scheduled_at', '>=', $d))
-            ->when($filters['to'] ?? null, fn ($q, $d) => $q->where('scheduled_at', '<=', $d))
+            // a day as "to" takes the whole day: "<= 2027-05-31" alone stops at its midnight and drops the 18:00 post
+            ->when($filters['to'] ?? null, fn ($q, $d) => preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) ? $q->whereDate('scheduled_at', '<=', $d) : $q->where('scheduled_at', '<=', $d))
             ->when($filters['state'] ?? null, fn ($q, $s) => $q->where('state', $s))
             ->when($filters['platform'] ?? null, fn ($q, $p) => $q->whereJsonContains('platforms', $p))
             ->when($filters['pillar'] ?? null, fn ($q, $p) => $q->where('pillar', $p));

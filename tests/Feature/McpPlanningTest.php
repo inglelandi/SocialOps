@@ -57,8 +57,8 @@ test('save-plan files the posts as Drafts with captions, the trend brief and the
     $reports = Report::orderBy('id')->get();
     expect($reports->pluck('kind')->all())->toBe(['trend_brief', 'plan'])
         ->and($reports[0]->body)->toBe('# May trends')
-        ->and($reports[1]->title)->toBe('Πλάνο περιεχομένου 2027-05-12 έως 2027-05-20') // the client's first language
-        ->and($reports[1]->body)->toContain('## 1. Sunset cocktails (2027-05-12)')->toContain('Οδηγίες λεζάντας: Mention happy hour')->toContain('Σημειώσεις για τον ελεγκτή: Check the hours')->toContain('# May trends')
+        ->and($reports[1]->title)->toBe('Πλάνο περιεχομένου 12-05-2027 έως 25-05-2027') // the client's first language, DD-MM-YYYY, up to the day the LinkedIn post landed on
+        ->and($reports[1]->body)->toContain('## 1. Sunset cocktails (18-05-2027 18:00)')->toContain('Σχεδιάστηκε για 12-05-2027')->toContain('Οδηγίες λεζάντας: Mention happy hour')->toContain('Σημειώσεις για τον ελεγκτή: Check the hours')->toContain('# May trends')
         ->and($reports[1]->meta['posts'][1]['name'])->toBe($li->name);
     $response->assertSee('"review_sheet":"'.route('reports.show', $reports[1]).'"');
 

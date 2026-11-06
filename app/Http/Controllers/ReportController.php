@@ -86,6 +86,6 @@ class ReportController extends Controller
     {
         abort_unless($report->kind === 'plan' && isset($report->meta['posts']), 404);
 
-        return response()->streamDownload(fn () => print TopicsDocx::build($report), $report->client->name.' - '.TopicsDocx::title($report).'.docx', ['Content-Type' => TopicsDocx::MIME]);
+        return response()->streamDownload(fn () => print TopicsDocx::build($report), TopicsDocx::filename($report), ['Content-Type' => TopicsDocx::MIME]);
     }
 }

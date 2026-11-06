@@ -100,8 +100,11 @@ class Client extends Model
     /** Titles and trend signals of the last 90 days of posts, so a planner does not repeat an angle or a signal. */
     public function recentTopics(): array
     {
+        // the planner writes the trend line in the client's language ("Τάση:" for a Greek-first client), so every label counts
+        $labels = collect(array_keys(config('app.locales')))->map(fn (string $locale) => preg_quote(__('Trend:', [], $locale), '/'))->unique()->join('|');
+
         return $this->posts()->where('scheduled_at', '>=', now()->subDays(90))->orderByDesc('scheduled_at')->limit(60)->pluck('brief')
-            ->map(fn (?string $brief) => strtok((string) $brief, "\n").(preg_match('/^Trend: ([^.]+)/m', (string) $brief, $m) ? " (trend: {$m[1]})" : ''))
+            ->map(fn (?string $brief) => strtok((string) $brief, "\n").(preg_match("/^(?:{$labels}) ([^.]+)/mu", (string) $brief, $m) ? " (trend: {$m[1]})" : ''))
             ->filter()->values()->all();
     }
 
