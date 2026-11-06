@@ -99,6 +99,7 @@ A subdomain of the agency domain is enough, for example `social.AGENCY.gr`; the 
    CACHE_STORE=database
    FILESYSTEM_DISK=local
    MAIL_MAILER=smtp MAIL_HOST=localhost MAIL_PORT=587 MAIL_USERNAME=social@AGENCY.gr MAIL_PASSWORD=… MAIL_FROM_ADDRESS=social@AGENCY.gr
+   MAIL_URL=smtp://localhost?verify_peer=0   (Plesk's mail certificate carries the server's name, not `localhost`: without this line every mail fails with "Peer certificate subjectAltName did not match expected name `localhost`". Settings → Send a test e-mail checks it.)
    ANTHROPIC_API_KEY=… plus the platform ids from sections 1 to 3
    SLACK_WEBHOOK_URL=… optional: staff alerts (post needs a human, approval answered or overdue, token expiring, plan finished) also go to a Slack channel; create it under the Slack app's Incoming Webhooks
    ```
