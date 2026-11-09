@@ -50,6 +50,7 @@ Facts the client wrote down (menus, prices, services, rooms, events, guidelines,
 - Spread the dates across the window. Avoid two posts on the same day for the same platform unless the window is shorter than the count.
 - Place posts near a key date when one falls inside the window.
 - When there are posting slots, date the posts on slot days.
+- A post about a specific day (a holiday, a name day, an event, an opening, an anniversary) gets that date and `fixed_date: true`; everything else may move to a posting slot.
 - Formats: Instagram feed, carousel, reel or story; Facebook post; TikTok video or photos; LinkedIn feed (image or text), carousel (images or a document) or reel (video). LinkedIn is for the business side: people, the place, milestones, behind the scenes, never a sales push.
 - One post can target several platforms when the angle works on all of them.
 - Every post needs an asset brief the team can act on: what to shoot, or which kind of existing asset to pick.
@@ -70,3 +71,4 @@ Return JSON only: `{"posts": [...]}` with exactly {{count}} objects, each with t
 - why_now: one sentence
 - asset_brief: what to shoot or pick
 - caption_brief: what the caption must say, including any fact, date or call to action
+- fixed_date: true when the post is about that specific day (a holiday, a name day, an event, an opening, an anniversary) and must not move; false or absent otherwise

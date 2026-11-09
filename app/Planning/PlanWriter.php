@@ -11,6 +11,7 @@ use App\Posts\PostState;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Files a planned batch (the DraftBatch shape, from the command or from Claude over MCP): one Draft post per plan with a
@@ -19,19 +20,23 @@ use Illuminate\Support\Facades\DB;
  */
 class PlanWriter
 {
+    /** Words most awareness days share in the holiday list; alone they say nothing about which day a post is about (keepsDay()). */
+    private const COMMON_WORDS = ['Παγκόσμια', 'Ημέρα', 'Διεθνής', 'Εθνική', 'International', 'World', 'Global', 'National', 'European', 'Europe', 'Awareness', 'Month', 'holiday', 'most'];
+
     /**
      * All or nothing: a sheet that fails to file takes its Drafts with it, so a retried job does not file them twice.
      *
-     * @param  array  $result  gets each post's name, url, time and the day it has on the calendar; the sheet is returned
+     * @param  array  $result  gets each post's name, url, time, the day it has on the calendar and whether it kept its day (fixed_date); the sheet is returned
      */
     public function write(Client $client, array &$result, bool $fileBrief): Report
     {
         return DB::transaction(function () use ($client, &$result, $fileBrief) {
             foreach ($result['posts'] as &$post) {
+                $post['fixed_date'] = self::keepsDay($client, $post); // resolved (the backup rule included) before the Draft is dated: the sheet, the Word file and the answer say the same
                 $draft = $this->createDraft($client, $post);
                 $post['name'] = $draft->name;
                 $post['url'] = route('posts.edit', $draft);
-                // the Draft's own day, which a taken or missing slot can move: the sheet, the Word file and the calendar say the same
+                // the Draft's own day, which a taken or missing slot can move (a post that keeps its day never does): the sheet, the Word file and the calendar say the same
                 if ($draft->scheduled_at->toDateString() !== $post['date']) {
                     $post['planned_date'] = $post['date'];
                     $post['date'] = $draft->scheduled_at->toDateString();
@@ -96,11 +101,57 @@ class PlanWriter
         return array_values(array_filter(array_keys($captions), fn ($k) => is_string($k) && strlen($k) === 2));
     }
 
+    /**
+     * Whether a planned post keeps its day instead of moving to a posting slot: the planner said so (fixed_date), or, as a
+     * backup when an older plan or worker prompt sent no flag, the day is a holiday for the client and the post talks about
+     * it: a word of 4 letters or more from the holiday's name (not one of COMMON_WORDS) appears in the title, the angle or
+     * the why now, case and accents aside. A holiday date alone never pins a post: the international days list is dense,
+     * and a post planned on one of those days is usually about something else.
+     */
+    public static function keepsDay(Client $client, array $post): bool
+    {
+        if (isset($post['fixed_date'])) {
+            return (bool) $post['fixed_date'];
+        }
+        $fold = fn (string $s) => Str::ascii(Str::lower($s)); // lowercase first: portable-ascii reads Greek capitals differently (ΕΙ → i, ει → ei)
+        $common = array_map($fold, self::COMMON_WORDS);
+        $text = $fold(implode(' ', [$post['title'] ?? '', $post['angle'] ?? '', $post['why_now'] ?? '']));
+        $day = CarbonImmutable::parse($post['date']);
+        foreach (Holidays::lines($day, $day, Holidays::countries($client->toProfileArray())) as $holiday) {
+            preg_match_all('/\p{L}{4,}/u', $holiday, $m);
+            foreach (array_diff(array_map($fold, $m[0]), $common) as $word) {
+                if (str_contains($text, $word)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The Draft's date and time from the planned day. A post that keeps its day (fixed_date, resolved by keepsDay() before
+     * the call) gets the client's usual time that weekday (Client::usualTime()), an hour later up to three times while
+     * another post of the client sits on the exact time: a clash on the right day beats the wrong day. Every other post
+     * takes the client's next free weekly posting slot from that day, else 10:00 as a placeholder the reviewer adjusts.
+     */
+    private function dateFor(Client $client, array $post): CarbonImmutable
+    {
+        $day = CarbonImmutable::parse($post['date']);
+        if (! ($post['fixed_date'] ?? false)) {
+            return $client->nextFreeSlot($day->startOfDay()) ?? $day->setTime(10, 0);
+        }
+        $at = $day->setTimeFromTimeString($client->usualTime($day));
+        for ($moves = 0; $moves < 3 && $client->posts()->where('scheduled_at', $at)->exists(); $moves++) {
+            $at = $at->addHour();
+        }
+
+        return $at;
+    }
+
     private function createDraft(Client $client, array $post): Post
     {
-        // the planner gives a date only: the client's next free posting slot from that day, else 10:00 as a placeholder the reviewer adjusts
-        $day = CarbonImmutable::parse($post['date']);
-        $date = $client->nextFreeSlot($day->startOfDay()) ?? $day->setTime(10, 0);
+        $date = $this->dateFor($client, $post);
         $t = fn (string $key) => __($key, [], $client->uiLocale());
         $trend = ($post['trend_signal'] ?? null) ? $t('Trend:')." {$post['trend_signal']}. " : '';
         $captions = $post['captions'] ?? [];
@@ -140,7 +191,9 @@ class PlanWriter
         foreach ($result['posts'] as $i => $post) {
             $captions = $post['captions'] ?? [];
             $md .= "\n## ".($i + 1).". {$post['title']} (".trim(CarbonImmutable::parse($post['date'])->format('d-m-Y').' '.($post['time'] ?? '')).")\n\n";
-            if (isset($post['planned_date'])) {
+            if ($post['fixed_date'] ?? false) {
+                $md .= '- '.$t('Kept on its day.')."\n";
+            } elseif (isset($post['planned_date'])) {
                 $md .= '- '.$t('Planned for :date; the calendar has it on the next free posting slot.', ['date' => CarbonImmutable::parse($post['planned_date'])->format('d-m-Y')])."\n";
             }
             $md .= '- '.$t('Name:')." `{$post['name']}`\n- ".$t('Platforms:').' '.implode(', ', $post['platforms']).' | '.$t('Format:')." {$post['format']} | ".$t('Pillar:').' '.($post['pillar'] ?? '')."\n";
