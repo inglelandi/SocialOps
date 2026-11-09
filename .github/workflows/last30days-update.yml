@@ -1,0 +1,111 @@
+name: last30days update
+
+# Every morning: copy the newest last30days skill (github.com/mvanhorn/last30days-skill) into
+# .claude/skills/last30days and, when it changed, open or refresh one PR for Panos to read and merge
+# (decision D21). Nothing here runs the skill's code. A PR opened with the workflow's own token starts
+# no other workflow, so Pint and the tests run here, before the PR is opened.
+on:
+  schedule:
+    - cron: '23 4 * * *' # 06:23 in Athens in winter, 07:23 in summer
+  workflow_dispatch: # the "Run workflow" button on the Actions page
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: last30days-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      BRANCH: auto/last30days-update
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy the newest skill
+        id: copy
+        run: bash .github/scripts/update-last30days.sh
+
+      - name: Skip a version Panos already closed
+        id: closed
+        if: steps.copy.outputs.changed == 'true'
+        env:
+          SHORT: ${{ steps.copy.outputs.short }}
+        run: |
+          n=$(gh pr list --state closed --search "$SHORT in:title" --json mergedAt --jq '[.[] | select(.mergedAt == null)] | length')
+          echo "skip=$([ "${n:-0}" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - uses: shivammathur/setup-php@v2
+        if: steps.copy.outputs.changed == 'true' && steps.closed.outputs.skip != 'true'
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, pdo_sqlite, redis
+          coverage: none
+
+      - name: Pint and the tests
+        if: steps.copy.outputs.changed == 'true' && steps.closed.outputs.skip != 'true'
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          cp .env.example .env && php artisan key:generate
+          vendor/bin/pint --test
+          php artisan test
+
+      - name: Open or refresh the PR
+        if: steps.copy.outputs.changed == 'true' && steps.closed.outputs.skip != 'true'
+        env:
+          OLD: ${{ steps.copy.outputs.old_version }}
+          NEW: ${{ steps.copy.outputs.version }}
+          OLD_COMMIT: ${{ steps.copy.outputs.old_commit }}
+          NEW_COMMIT: ${{ steps.copy.outputs.commit }}
+          SHORT: ${{ steps.copy.outputs.short }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          rm -f .env
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898283+github-actions[bot]@users.noreply.github.com'
+          git checkout -B "$BRANCH"
+          git add -A .claude/skills/last30days
+          title="last30days skill $OLD → $NEW ($SHORT)"
+          git commit -q -m "$title"
+          git push -q -f origin "$BRANCH"
+
+          if [ -n "$OLD_COMMIT" ]; then compare="https://github.com/mvanhorn/last30days-skill/compare/$OLD_COMMIT...$NEW_COMMIT"; else compare="https://github.com/mvanhorn/last30days-skill/commits/$NEW_COMMIT"; fi
+          {
+            echo "The daily last30days check found a newer copy of the skill."
+            echo
+            echo "- **Version:** $OLD → $NEW"
+            echo "- **What changed upstream:** $compare"
+            echo "- **In this repo:** $(git diff --shortstat HEAD~1 -- .claude/skills/last30days)"
+            echo
+            echo "## Before merging, look for"
+            echo "- new addresses the scripts send data to, or new API keys or logins it asks for (\`scripts/\`, \`SKILL.md\`);"
+            echo "- anything that asks Claude to do more than research: posting, deleting, sending mail, reading files outside the research."
+            echo
+            echo "If something looks wrong, close the PR: this version will not be offered again."
+            echo
+            echo "## Checks"
+            echo "Pint and the full test suite passed in this run: $RUN_URL (a PR opened by the workflow token starts no other workflow, so the tests ran there)."
+            echo
+            echo "## After merging"
+            echo "Nothing on the server. Every Claude Code session on this repo starts with the new copy."
+            echo
+            echo "<details><summary>Files changed</summary>"
+            echo
+            echo '```'
+            git diff --name-status HEAD~1 -- .claude/skills/last30days | head -80
+            echo '```'
+            echo "</details>"
+            echo
+            echo "_Opened by \`.github/workflows/last30days-update.yml\`. While this PR is open, the daily run refreshes it on top of main._"
+          } > "$RUNNER_TEMP/body.md"
+
+          if [ "$(gh pr view "$BRANCH" --json state --jq .state 2>/dev/null)" = "OPEN" ]; then
+            gh pr edit "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+          else
+            gh pr create --base main --head "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/body.md" --assignee Kokouliss
+          fi
