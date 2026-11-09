@@ -54,6 +54,8 @@ Lets a client drop photos and videos in a shared Google Drive folder; Social Ops
 4. Upload it to the server next to the app (not inside it), point `.env` at it, then **Refresh after update** at `/refresh` (linked in the side navigation for admins) (or `php artisan config:clear`).
 5. Per client, on the assets page: share the folder (the client's own, or one you make in the agency's Drive and share with the client) with the address the box shows, *Viewer* is enough; paste the folder link; **Watch folder**. The folder itself is read, not its subfolders; one folder per client; a file is filed once, by its Drive id.
 
+The same service account reads the reference folders of the **Files** tab (the client's previous posts, menus, briefs: what Claude plans from). Share the agency's parent "Clients" folder with the address once, and every client folder under it is readable: on each client's Files tab paste the client's folder link (or press the button that reuses the photo inbox folder) and **Link**. There the subfolders are read too (three levels, 300 files at most); Word, Excel, PowerPoint, Google Docs, Sheets and Slides and text files are read, PDFs are not (open them in Google Docs or save them as Word).
+
 `.env`:
 ```
 GOOGLE_SERVICE_ACCOUNT_JSON=/var/www/vhosts/AGENCY-DOMAIN/socialops-drive.json

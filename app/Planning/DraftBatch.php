@@ -13,8 +13,11 @@ class DraftBatch
         private CaptionDrafter $captions,
     ) {}
 
-    /** @param  list<string>  $recent  titles of recent posts, so the planner does not repeat them */
-    public function run(PlanRequest $request, ?string $brief = null, ?callable $progress = null, array $recent = []): array
+    /**
+     * @param  list<string>  $recent  titles of recent posts, so the planner does not repeat them
+     * @param  array{previous_posts?: string, reference?: string}  $reference  the client's Drive files (ClientReference::for), handed to the planner as they are
+     */
+    public function run(PlanRequest $request, ?string $brief = null, ?callable $progress = null, array $recent = [], array $reference = []): array
     {
         $progress ??= fn () => null;
 
@@ -24,7 +27,7 @@ class DraftBatch
         }
 
         $progress('Planning posts');
-        ['posts' => $posts, 'warnings' => $warnings] = $this->planner->plan($request, $brief, $recent);
+        ['posts' => $posts, 'warnings' => $warnings] = $this->planner->plan($request, $brief, $recent, $reference);
 
         $profile = $request->profile;
         foreach ($posts as $i => &$post) {

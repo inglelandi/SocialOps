@@ -43,10 +43,14 @@ class ClientController extends Controller
 
     public function edit(Client $client): View
     {
+        $read = $client->documents()->where('chars', '>', 0);
+
         return view('clients.edit', [
             'client' => $client,
             'accounts' => PlanRequest::accounts($client->toProfileArray()),
             'claudeJobs' => $client->reports()->where('kind', 'claude_job')->orderBy('id')->get(),
+            // the reference folder of the Files tab, for the line under the MCP "Plan with Claude" box; null while none is linked
+            'documents' => $client->accounts()->where('platform', 'drive_docs')->exists() ? ['read' => $read->count(), 'previous' => $read->clone()->where('kind', 'previous_posts')->count()] : null,
         ]);
     }
 

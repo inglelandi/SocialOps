@@ -9,7 +9,11 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
-/** The Google Drive API as our own service account: a client shares a folder with its address, the hourly pull files new photos and videos in the inbox. Read only, nothing is written to Drive. */
+/**
+ * The Google Drive API as our own service account: a client shares a folder with its address, the hourly pull files new photos
+ * and videos in the inbox (files()), and the reference folder of the Files tab is read as text for the planner (documents(),
+ * export()). Read only, nothing is written to Drive.
+ */
 final class GoogleDrive
 {
     private const API = 'https://www.googleapis.com/drive/v3/';
@@ -64,6 +68,76 @@ final class GoogleDrive
         throw_unless($response->successful(), new RuntimeException("Google Drive: download of {$id} failed ({$response->status()})."));
 
         return $response;
+    }
+
+    /** Subfolders of the reference folder are read this deep, and this many files at most: a client's folder, not its whole Drive. */
+    public const DOCUMENTS_DEPTH = 3;
+
+    public const DOCUMENTS_MAX = 300;
+
+    /** What Drive exports a Google-native file as; Sheets come out as the first sheet only. */
+    public const EXPORTS = [
+        'application/vnd.google-apps.document' => 'text/plain',
+        'application/vnd.google-apps.spreadsheet' => 'text/csv',
+        'application/vnd.google-apps.presentation' => 'text/plain',
+    ];
+
+    /** Google-native types that are no document: shortcuts (their target is listed where it lives), forms, sites, drawings, maps, jams. */
+    private const NOT_DOCUMENTS = ['application/vnd.google-apps.shortcut', 'application/vnd.google-apps.form', 'application/vnd.google-apps.site', 'application/vnd.google-apps.drawing', 'application/vnd.google-apps.map', 'application/vnd.google-apps.jam'];
+
+    /**
+     * The documents of the reference folder (`external_id`) and its subfolders, DOCUMENTS_DEPTH deep and DOCUMENTS_MAX files at
+     * most: everything but photos, videos and audio (the inbox's business), shortcuts, forms and sites.
+     *
+     * @return list<array{id: string, name: string, mime: string, modified: ?string, size: ?int, path: string}>
+     */
+    public function documents(Account $account): array
+    {
+        $files = [];
+        $this->walk($account->external_id, '', 0, $files);
+
+        return $files;
+    }
+
+    private function walk(string $folderId, string $path, int $depth, array &$files): void
+    {
+        $page = null;
+        do {
+            $result = $this->call('files', array_filter(['q' => "'{$folderId}' in parents and trashed = false", 'fields' => 'nextPageToken,files(id,name,mimeType,modifiedTime,size,shortcutDetails)', 'pageSize' => 1000, 'includeItemsFromAllDrives' => 'true', 'orderBy' => 'folder,name', 'pageToken' => $page]));
+            foreach ($result['files'] ?? [] as $file) {
+                if (count($files) >= self::DOCUMENTS_MAX) {
+                    return;
+                }
+                $mime = (string) $file['mimeType'];
+                if ($mime === 'application/vnd.google-apps.folder') {
+                    if ($depth < self::DOCUMENTS_DEPTH) {
+                        $this->walk($file['id'], ltrim("{$path}/{$file['name']}", '/'), $depth + 1, $files);
+                    }
+
+                    continue;
+                }
+                if (in_array($mime, self::NOT_DOCUMENTS, true) || isset($file['shortcutDetails']) || preg_match('~^(image|video|audio)/~', $mime)) {
+                    continue;
+                }
+                $files[] = ['id' => $file['id'], 'name' => $file['name'], 'mime' => $mime, 'modified' => $file['modifiedTime'] ?? null, 'size' => isset($file['size']) ? (int) $file['size'] : null, 'path' => $path];
+            }
+        } while ($page = $result['nextPageToken'] ?? null);
+    }
+
+    /** A Google Doc, Sheet or Slides file as text (EXPORTS); any other file goes through download(). */
+    public function export(string $id, string $mime): string
+    {
+        $as = self::EXPORTS[$mime] ?? throw new RuntimeException("Google Drive: {$mime} cannot be exported as text.");
+        $response = $this->http()->timeout(300)->get(self::API."files/{$id}/export", ['mimeType' => $as, 'supportsAllDrives' => 'true']);
+        throw_unless($response->successful(), new RuntimeException("Google Drive: export of {$id} failed ({$response->status()})."));
+
+        return $response->body();
+    }
+
+    /** A file Drive holds in its own format (Docs, Sheets, Slides…), to be exported rather than downloaded. */
+    public static function isNative(string $mime): bool
+    {
+        return str_starts_with($mime, 'application/vnd.google-apps.');
     }
 
     private function call(string $path, array $query): array

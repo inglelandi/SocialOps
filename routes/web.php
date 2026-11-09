@@ -5,6 +5,7 @@ use App\Http\Controllers\AssetController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CanvaController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\ClientFilesController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeadlineController;
@@ -48,6 +49,11 @@ Route::middleware(['auth', LimitClients::class])->group(function () {
     Route::resource('clients', ClientController::class)->except('show')->middlewareFor(['create', 'store'], 'can:add-clients');
     Route::get('/clients/{client}/assets', [AssetController::class, 'index'])->name('clients.assets');
     Route::get('/clients/{client}/grid', [ClientController::class, 'grid'])->name('clients.grid');
+    // the Files tab: the client's reference folder on Google Drive, read as text for the planner (separate from the photo inbox folder)
+    Route::get('/clients/{client}/files', [ClientFilesController::class, 'index'])->name('clients.files');
+    Route::post('/clients/{client}/files/folder', [ClientFilesController::class, 'link'])->name('clients.files.link');
+    Route::post('/clients/{client}/files/sync', [ClientFilesController::class, 'sync'])->name('clients.files.sync');
+    Route::patch('/clients/{client}/files/{document}', [ClientFilesController::class, 'kind'])->scopeBindings()->name('clients.files.kind'); // a document of another client is a 404
     Route::post('/clients/{client}/assets', [AssetController::class, 'store'])->name('assets.store'); // staff upload, one file or many
     Route::get('/assets/{asset}/thumb', [AssetController::class, 'thumb'])->name('assets.thumb');
     Route::get('/assets/{asset}/view', [AssetController::class, 'show'])->name('assets.view');
@@ -73,7 +79,7 @@ Route::middleware(['auth', LimitClients::class])->group(function () {
     Route::get('/reports/{report}/download', [ReportController::class, 'download'])->name('reports.download');
     Route::get('/reports/{report}/word', [ReportController::class, 'word'])->name('reports.word');
     Route::post('/reports/{report}/send', [ReportController::class, 'send'])->name('reports.send');
-    Route::delete('/accounts/{account}', [AccountController::class, 'destroy'])->name('accounts.destroy'); // also Canva, Drive and Dropbox
+    Route::delete('/accounts/{account}', [AccountController::class, 'destroy'])->name('accounts.destroy'); // also Canva, Drive, Dropbox and the reference folder
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar');
     Route::get('/today', [TodayController::class, 'index'])->name('today'); // posting by hand: the texts to paste, then Mark published
     Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');

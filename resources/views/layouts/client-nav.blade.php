@@ -1,10 +1,11 @@
 @php
     // Same tab row on every page of a client; the switcher (phones: the side navigation lists the clients on wider screens) keeps the page when the route is client-scoped.
     $name = request()->route()->getName();
-    $switch = fn ($c) => in_array($name, ['clients.assets', 'clients.grid', 'clients.reviews', 'clients.deadlines', 'clients.comments', 'clients.accounts', 'clients.reports', 'clients.edit', 'clients.bin', 'posts.create']) ? route($name, $c) : route('calendar', ['client' => $c->slug]);
+    $switch = fn ($c) => in_array($name, ['clients.assets', 'clients.files', 'clients.grid', 'clients.reviews', 'clients.deadlines', 'clients.comments', 'clients.accounts', 'clients.reports', 'clients.edit', 'clients.bin', 'posts.create']) ? route($name, $c) : route('calendar', ['client' => $c->slug]);
     $tabs = [
         [__('Calendar'), route('calendar', ['client' => $client->slug]), request()->routeIs('calendar', 'posts.*'), null],
         [__('Assets'), route('clients.assets', $client), request()->routeIs('clients.assets'), null],
+        [__('Files'), route('clients.files', $client), request()->routeIs('clients.files'), $client->documents()->where('chars', '>', 0)->count()], // the files read from the client's Drive folder
         [__('Grid'), route('clients.grid', $client), request()->routeIs('clients.grid'), null],
         [__('Approvals'), route('clients.reviews', $client), request()->routeIs('clients.reviews'), $client->posts()->where('state', \App\Posts\PostState::InReview)->count()],
         [__('Deadlines'), route('clients.deadlines', $client), request()->routeIs('clients.deadlines'), $client->deadlines()->dueSoon()->count()],

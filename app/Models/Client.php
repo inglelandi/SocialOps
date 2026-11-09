@@ -120,6 +120,12 @@ class Client extends Model
         return $this->hasMany(Comment::class);
     }
 
+    /** The files of the reference folder on Google Drive (the Files tab), as text for the planner. */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(ClientDocument::class);
+    }
+
     /**
      * The brand profile in the shape of config/clients/example.yaml,
      * for the caption prompt and the publishing drivers.

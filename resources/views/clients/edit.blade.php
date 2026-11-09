@@ -123,6 +123,16 @@
                                     <div class="sm:col-span-4 flex gap-2"><x-primary-button>{{ __('Queue for Claude') }}</x-primary-button><x-secondary-button type="button" x-on:click="copy()"><span x-text="copied ? '{{ __('Copied') }}' : '{{ __('Copy the request') }}'"></span></x-secondary-button></div>
                                     <x-input-error class="sm:col-span-4" :messages="$errors->job->all()" />
                                 </form>
+                                {{-- the client's Drive folder (the Files tab) is part of the brief get-planning-brief hands Claude --}}
+                                <p class="mt-4 text-sm text-gray-600">
+                                    <a href="{{ route('clients.files', $client) }}" class="font-medium text-gray-900 hover:text-brand-600">
+                                        @if ($documents)
+                                            {{ __('Claude also reads :n files from the client\'s Drive folder (:m with previous posts).', ['n' => $documents['read'], 'm' => $documents['previous']]) }}
+                                        @else
+                                            {{ __('Link the client\'s Drive folder on the Files tab, so Claude reads the previous posts and the reference files.') }}
+                                        @endif
+                                    </a>
+                                </p>
                                 @if ($claudeJobs->isNotEmpty())
                                     <h4 class="mt-6 text-sm font-semibold text-gray-900">{{ __('Waiting for Claude') }}</h4>
                                     <ul class="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-300 text-sm">
