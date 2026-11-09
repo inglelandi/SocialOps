@@ -12,8 +12,8 @@ use RuntimeException;
 /**
  * The Google Drive API as our own service account: a client shares a folder with its address, the hourly pull files new photos
  * and videos in the inbox (files()), and the reference folder of the Files tab is read as text for the planner (documents(),
- * export()); its designs are only listed, and their previews handed on as they come (preview()), never kept. Read only,
- * nothing is written to Drive.
+ * export()); its designs are only listed, and their previews handed on as they come (preview()), never kept. The team's posts
+ * slideshow of a client is one file read the same way (file()). Read only, nothing is written to Drive.
  */
 final class GoogleDrive
 {
@@ -32,6 +32,40 @@ final class GoogleDrive
     {
         return preg_match('~/folders/([\w-]+)~', $link, $m) ? $m[1] : trim(explode('?', trim($link))[0]);
     }
+
+    /** The file id out of a pasted Google Slides, Docs, Sheets or Drive link (`/d/<id>/`, `/folders/<id>`, `?id=<id>`), or the bare id. */
+    public static function fileId(string $link): string
+    {
+        // a folder link gives its id too, so file() can say it is a folder
+        if (preg_match('~/d/([\w-]{10,})~', $link, $m) || preg_match('~/folders/([\w-]{10,})~', $link, $m) || preg_match('~[?&]id=([\w-]{10,})~', $link, $m)) {
+            return $m[1];
+        }
+
+        return trim(explode('?', trim($link))[0]);
+    }
+
+    /**
+     * The team's posts slideshow of a client (or a Doc, Sheet, PowerPoint or Word file in its place) as one entry shaped like
+     * documents() lists them, when the service account can see it: shared with its address, or open to anyone with the link.
+     *
+     * @return array{id: string, name: string, mime: string, modified: ?string, size: ?int, path: string, design: bool, preview: bool}
+     */
+    public function file(string $id): array
+    {
+        $file = $this->call("files/{$id}", ['fields' => 'id,name,mimeType,modifiedTime,size'], 'file not found. Share it with '.self::email().' (Viewer is enough), or open it to anyone with the link, first.');
+        $mime = (string) $file['mimeType'];
+        throw_if($mime === 'application/vnd.google-apps.folder', new RuntimeException('Google Drive: that link is a folder; link the slideshow file itself.'));
+        throw_unless(isset(self::EXPORTS[$mime]) || in_array($mime, self::OFFICE_TEXT, true), new RuntimeException('Google Drive: “'.$file['name'].'” is not a Google Slides, Docs or Sheets file, nor a PowerPoint, Word or Excel file.'));
+
+        return ['id' => $file['id'], 'name' => $file['name'], 'mime' => $mime, 'modified' => $file['modifiedTime'] ?? null, 'size' => isset($file['size']) ? (int) $file['size'] : null, 'path' => '', 'design' => false, 'preview' => false];
+    }
+
+    /** Office files a posts slideshow may be instead of a Google file: PowerPoint, Word, Excel. */
+    private const OFFICE_TEXT = [
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ];
 
     /** The folder as Drive describes it (id, name), when it is a folder the service account can see. */
     public function folder(string $id): array
@@ -217,10 +251,10 @@ final class GoogleDrive
         return str_starts_with($mime, 'application/vnd.google-apps.');
     }
 
-    private function call(string $path, array $query): array
+    private function call(string $path, array $query, ?string $notFound = null): array
     {
         $response = $this->http()->get(self::API.$path, $query + ['supportsAllDrives' => 'true']);
-        throw_unless($response->successful(), new RuntimeException('Google Drive: '.($response->status() === 404 ? 'folder not found. Share it with '.self::email().' first.' : ($response->json('error.message') ?? $response->body()))));
+        throw_unless($response->successful(), new RuntimeException('Google Drive: '.($response->status() === 404 ? ($notFound ?? 'folder not found. Share it with '.self::email().' first.') : ($response->json('error.message') ?? $response->body()))));
 
         return $response->json();
     }

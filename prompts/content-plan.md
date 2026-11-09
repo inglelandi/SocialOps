@@ -35,6 +35,10 @@ You plan social media content for {{client.name}}, a {{client.type}} in {{client
 ## Recent posts (do not repeat these angles)
 {{recent}}
 
+## The team's posts slideshow (posts prepared to go up)
+The team's working file for this client, slide by slide: the posts already made or scheduled, with their dates (day/month), captions and links, and often a list of ideas for the next ones. Treat every dated post in it as already on the calendar: never plan it again, do not put another post about the same product, offer or hook within a week of it, and keep the campaigns it runs (the same offer, products and links, the same message). Ideas it lists without a date are the team's own: build the new posts from them first. Its captions show how this client's posts are written (the opening, the emoji, the closing lines with the addresses and the links): write the caption briefs the same way.
+{{upcoming_posts}}
+
 ## Already posted, from the client's files
 These are the posts the client published before Social Ops and its own content calendar: do not repeat their angles or hooks; keep the recurring series, the tone and the kind of post the client is used to.
 {{previous_posts}}
@@ -49,6 +53,7 @@ These are posts the client published before, seen from their graphics (one line 
 
 ## Rules
 - Prefer what the client's files say over your own assumptions.
+- Leave the days that already have a post in the posts slideshow free, unless the window is shorter than the count.
 - Use the trend brief for roughly half of the posts; the rest are evergreen posts from the pillars. Name the signal each trend post uses.
 - When the team gives an instruction, every post does what it says: it decides the topic; pick the pillar, the format and the trend signals that fit it. The quota and the half-and-half rule then do not apply.
 - Spread the dates across the window. Avoid two posts on the same day for the same platform unless the window is shorter than the count.

@@ -13,13 +13,14 @@ use Normalizer;
  * One file of a client's reference folder on Google Drive, kept as text so Claude can plan from it: the posts the client
  * published before (not to repeat them), a reference file (menus, prices, services: facts), or a design (a graphic, a
  * photo, a PDF, a video: kind design) whose text is the description Claude wrote from Drive's preview through the
- * connector, once (`described_at`). The file itself, or a picture of it, is never kept.
+ * connector, once (`described_at`). The file itself, or a picture of it, is never kept. The team's posts slideshow of the
+ * client (a drive_slides account) is one more row, kind upcoming_posts: the posts prepared to go up.
  */
 #[Fillable(['source_id', 'name', 'path', 'mime', 'kind', 'kind_set_by_user', 'modified_at', 'size', 'text', 'chars', 'fetched_at', 'described_at', 'error'])]
 class ClientDocument extends Model
 {
     /** What a file is for the planner, with its label on the Files tab. */
-    public const KINDS = ['previous_posts' => 'Previous posts', 'reference' => 'Reference', 'design' => 'Design', 'ignored' => 'Not used'];
+    public const KINDS = ['upcoming_posts' => 'Posts slideshow', 'previous_posts' => 'Previous posts', 'reference' => 'Reference', 'design' => 'Design', 'ignored' => 'Not used'];
 
     /** The kinds the team can give a document (read as text) and a design (described from its picture). */
     public const DOCUMENT_KINDS = ['previous_posts', 'reference', 'ignored'];

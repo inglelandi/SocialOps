@@ -17,7 +17,8 @@ use Throwable;
 /**
  * Reads a client's reference folder on Google Drive (the drive_docs account) into client_documents: every document as text,
  * fetched again only when Drive says it changed, every design as a row waiting for Claude's description (never downloaded),
- * gone when the file is gone. One file's failure stays on its row.
+ * gone when the file is gone. One file's failure stays on its row. A drive_slides account (the team's posts slideshow) is
+ * one file, read the same way as kind upcoming_posts.
  */
 class SyncClientDocuments implements ShouldQueue
 {
@@ -43,16 +44,23 @@ class SyncClientDocuments implements ShouldQueue
 
     public function handle(GoogleDrive $drive): void
     {
+        $slideshow = $this->account->platform === 'drive_slides';
         try {
-            $listing = $drive->documents($this->account);
+            $listing = $slideshow ? ['files' => [$drive->file($this->account->external_id)], 'capped' => false] : $drive->documents($this->account);
         } catch (RuntimeException $e) {
-            // the folder is no longer shared, or the key file is gone: the documents read so far stay, the Files tab says why
+            // the folder or the slideshow is no longer shared, or the key file is gone: what was read so far stays, the Files tab says why
             $this->meta(['synced_at' => now()->toDateTimeString(), 'error' => $e->getMessage()]);
 
             return;
         }
 
         ['files' => $files, 'capped' => $capped] = $listing;
+        // one row per file and client: the posts slideshow is read on its own, so the folder leaves it out even when it holds it
+        if ($slideshow) {
+            ClientDocument::where('client_id', $this->account->client_id)->where('source_id', $this->account->external_id)->whereNot('account_id', $this->account->id)->delete();
+        } elseif ($skip = $this->account->client->accounts()->where('platform', 'drive_slides')->value('external_id')) {
+            $files = array_values(array_filter($files, fn (array $file) => $file['id'] !== $skip));
+        }
         $existing = $this->account->documents()->get()->keyBy('source_id');
         foreach ($files as $file) {
             $document = $existing->get($file['id']) ?? $this->account->documents()->make(['source_id' => $file['id']])->forceFill(['client_id' => $this->account->client_id]);
@@ -61,7 +69,12 @@ class SyncClientDocuments implements ShouldQueue
             $wasDesign = $document->kind === 'design' || $document->described_at !== null;
             // a video can be bigger than the column: kept at its top, still over the cap for a download
             $document->fill(['name' => $file['name'], 'path' => $file['path'], 'mime' => $file['mime'], 'modified_at' => $modified, 'size' => $file['size'] === null ? null : min($file['size'], self::SIZE_MAX)]);
-            if ($file['design']) {
+            if ($slideshow) {
+                $document->forceFill(['kind' => 'upcoming_posts', 'kind_set_by_user' => false]);
+                if ($fileChanged || ($document->text === null && $document->error === null)) {
+                    $this->fetch($drive, $document);
+                }
+            } elseif ($file['design']) {
                 $this->design($document, $file['preview'], $fileChanged);
             } else {
                 if (! $document->kind_set_by_user || $wasDesign) { // a design kind means nothing for a document
@@ -133,6 +146,7 @@ class SyncClientDocuments implements ShouldQueue
     public function failed(?Throwable $e): void
     {
         $this->meta(['synced_at' => now()->toDateTimeString(), 'error' => $e?->getMessage() ?? 'unknown error']);
-        Slack::send("{$this->account->client->name}: reading the reference folder \"{$this->account->name}\" failed: ".($e?->getMessage() ?? 'unknown error')."\n".route('clients.files', $this->account->client_id));
+        $what = $this->account->platform === 'drive_slides' ? 'the posts slideshow' : 'the reference folder';
+        Slack::send("{$this->account->client->name}: reading {$what} \"{$this->account->name}\" failed: ".($e?->getMessage() ?? 'unknown error')."\n".route('clients.files', $this->account->client_id));
     }
 }

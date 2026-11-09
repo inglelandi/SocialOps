@@ -14,9 +14,10 @@ use Illuminate\View\View;
 use RuntimeException;
 
 /**
- * The Files tab: a client's reference folder on Google Drive (an accounts row with platform drive_docs) and what was read
- * from it, so Claude plans from the client's previous posts, reference files and past designs. Separate from the photo
- * inbox folder. The designs' previews come from Drive on each view and are never kept here.
+ * The Files tab: the team's posts slideshow of the client (an accounts row with platform drive_slides: one Google Slides
+ * file with the posts prepared to go up) and its reference folder on Google Drive (platform drive_docs), with what was read
+ * from them, so Claude plans around the prepared posts and from the client's previous posts, reference files and past
+ * designs. Separate from the photo inbox folder. The designs' previews come from Drive on each view and are never kept here.
  */
 class ClientFilesController extends Controller
 {
@@ -32,8 +33,12 @@ class ClientFilesController extends Controller
         $designs = $designs->sortBy([fn (ClientDocument $a, ClientDocument $b) => ($b->modified_at?->getTimestamp() ?? 0) <=> ($a->modified_at?->getTimestamp() ?? 0) ?: strnatcasecmp($a->name, $b->name)])->values();
         $describable = $designs->filter(fn (ClientDocument $d) => $d->kind === 'design' && $d->error === null);
 
+        $slideshow = $client->accounts()->where('platform', 'drive_slides')->first();
+
         return view('clients.files', [
             'client' => $client,
+            'slideshow' => $slideshow,
+            'slideshowDocument' => $slideshow?->documents()->first(),
             'folder' => $folder,
             'documents' => $documents,
             'designs' => $request->boolean('all') ? $designs : $designs->take(self::DESIGNS_SHOWN),
@@ -62,6 +67,35 @@ class ClientFilesController extends Controller
         SyncClientDocuments::dispatch($account);
 
         return redirect()->route('clients.files', $client)->with('status', __('Linked “:name”, its files are being read', ['name' => $folder['name']]));
+    }
+
+    /**
+     * Link the posts slideshow: checked as the service account, kept as the client's drive_slides row and read right away
+     * (one file: the tab shows what was read on the way back). Another file forgets the old one's text.
+     */
+    public function linkSlideshow(Request $request, Client $client, GoogleDrive $drive): RedirectResponse
+    {
+        abort_unless(GoogleDrive::email(), 404, 'Add GOOGLE_SERVICE_ACCOUNT_JSON to .env first (docs/pilot-setup.md).');
+        $link = $request->validate(['slideshow' => ['required', 'string', 'max:500']])['slideshow'];
+        try {
+            $file = $drive->file(GoogleDrive::fileId($link));
+        } catch (RuntimeException $e) {
+            return redirect()->route('clients.files', $client)->withInput()->withErrors(['slideshow' => $e->getMessage()]);
+        }
+        $account = $client->accounts()->updateOrCreate(['platform' => 'drive_slides'], ['external_id' => $file['id'], 'name' => $file['name'], 'access_token' => '', 'connected_by' => $request->user()?->id, 'meta' => ['file' => $file['id'], 'mime' => $file['mime']]]);
+        if (! $account->wasRecentlyCreated && $account->wasChanged('external_id')) {
+            $account->documents()->delete();
+        }
+        SyncClientDocuments::dispatchSync($account);
+
+        return redirect()->route('clients.files', $client)->with('status', __('Linked “:name”, Claude reads it when it plans this client', ['name' => $file['name']]));
+    }
+
+    public function syncSlideshow(Client $client): RedirectResponse
+    {
+        SyncClientDocuments::dispatchSync($client->accounts()->where('platform', 'drive_slides')->firstOrFail());
+
+        return redirect()->route('clients.files', $client)->with('status', __('Slideshow read again'));
     }
 
     public function sync(Client $client): RedirectResponse

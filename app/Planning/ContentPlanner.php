@@ -18,7 +18,7 @@ class ContentPlanner
 
     /**
      * @param  list<string>  $recent  titles or captions of recent posts, so angles are not repeated
-     * @param  array{previous_posts?: string, reference?: string, designs?: string}  $reference  the client's Drive files (ClientReference::for): what it posted before, its facts and its described designs
+     * @param  array{upcoming_posts?: string, previous_posts?: string, reference?: string, designs?: string}  $reference  the client's Drive files (ClientReference::for): the team's posts slideshow, what it posted before, its facts and its described designs
      * @return array{posts: list<array>, warnings: list<string>}
      */
     public function plan(PlanRequest $request, string $trendBrief, array $recent = [], array $reference = []): array
@@ -33,6 +33,7 @@ class ContentPlanner
                 'quota' => PillarQuota::line($quota, $request->instruction),
                 'trend_brief' => $trendBrief,
                 'recent' => $recent,
+                'upcoming_posts' => $reference['upcoming_posts'] ?? '',
                 'previous_posts' => $reference['previous_posts'] ?? '',
                 'reference' => $reference['reference'] ?? '',
                 'designs' => $reference['designs'] ?? '',

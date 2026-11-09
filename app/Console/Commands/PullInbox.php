@@ -11,14 +11,14 @@ class PullInbox extends Command
 {
     protected $signature = 'inbox:pull';
 
-    protected $description = 'Queue a pull of every watched Google Drive and Dropbox folder into its client\'s inbox, and a read of every reference folder';
+    protected $description = 'Queue a pull of every watched Google Drive and Dropbox folder into its client\'s inbox, and a read of every reference folder and posts slideshow';
 
     public function handle(): int
     {
-        foreach (Account::whereIn('platform', [...array_keys(PullFolder::SOURCES), 'drive_docs'])->get() as $account) {
-            if ($account->platform === 'drive_docs') {
+        foreach (Account::whereIn('platform', [...array_keys(PullFolder::SOURCES), 'drive_docs', 'drive_slides'])->get() as $account) {
+            if (in_array($account->platform, ['drive_docs', 'drive_slides'], true)) {
                 SyncClientDocuments::dispatch($account);
-                $this->info("{$account->name}: documents queued");
+                $this->info("{$account->name}: ".($account->platform === 'drive_slides' ? 'slideshow' : 'documents').' queued');
 
                 continue;
             }

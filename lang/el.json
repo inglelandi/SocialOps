@@ -1061,5 +1061,17 @@
     "No designs in this folder yet. Photos, Illustrator, Photoshop, InDesign and EPS files, PDFs and videos are listed here.": "Κανένα σχέδιο στον φάκελο ακόμη. Εδώ εμφανίζονται φωτογραφίες, αρχεία Illustrator, Photoshop, InDesign και EPS, PDF και βίντεο.",
     ":done of :total described; Claude describes up to 25 an hour.": ":done από :total περιγράφηκαν· το Claude περιγράφει έως 25 την ώρα.",
     "Show all :n designs": "Εμφάνιση όλων των :n σχεδίων",
-    "And :n past designs it described, :m still waiting.": "Και :n παλιά σχέδια που περιέγραψε, :m περιμένουν ακόμη."
+    "And :n past designs it described, :m still waiting.": "Και :n παλιά σχέδια που περιέγραψε, :m περιμένουν ακόμη.",
+    "Posts slideshow": "Παρουσίαση αναρτήσεων",
+    "The Google Slides file where the team keeps the posts that will go up. Claude reads it when it plans or makes posts for this client: it does not plan them again, plans around them and writes the same way.": "Το αρχείο Google Slides όπου η ομάδα κρατά τις αναρτήσεις που θα ανέβουν. Το Claude το διαβάζει όταν σχεδιάζει ή φτιάχνει αναρτήσεις για αυτόν τον πελάτη: δεν τις ξανασχεδιάζει, σχεδιάζει γύρω από αυτές και γράφει με τον ίδιο τρόπο.",
+    "Last read :when, :n characters": "Τελευταία ανάγνωση :when, :n χαρακτήρες",
+    "Read it now": "Διάβασέ τη τώρα",
+    "Unlink this slideshow? Its text is forgotten here; nothing changes on Drive.": "Να αποσυνδεθεί η παρουσίαση; Το κείμενό της ξεχνιέται εδώ· στο Drive δεν αλλάζει τίποτα.",
+    "Read again every hour, and when you press Read it now.": "Διαβάζεται ξανά κάθε ώρα, και όταν πατάς «Διάβασέ τη τώρα».",
+    "What Claude reads": "Τι διαβάζει το Claude",
+    "Share the file with :email (Viewer is enough), or open it to anyone with the link, before linking it.": "Μοιράσου το αρχείο με :email (αρκεί Προβολή), ή άνοιξέ το σε όποιον έχει τον σύνδεσμο, πριν το συνδέσεις.",
+    "Linked “:name”, Claude reads it when it plans this client": "Συνδέθηκε η παρουσίαση «:name», το Claude τη διαβάζει όταν σχεδιάζει για αυτόν τον πελάτη",
+    "Slideshow read again": "Η παρουσίαση διαβάστηκε ξανά",
+    "Slideshow unlinked, its text is forgotten here": "Η παρουσίαση αποσυνδέθηκε, το κείμενό της ξεχάστηκε εδώ",
+    "And the posts slideshow “:name”.": "Και την παρουσίαση αναρτήσεων «:name»."
 }
