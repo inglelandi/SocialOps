@@ -127,4 +127,21 @@ enum PostState: string
             self::Withdrawn => 'Withdraw',
         };
     }
+
+    /** The icon on the button that moves a post into this state (App\View\Icons). */
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Idea => 'light-bulb',
+            self::Draft => 'pencil-square',
+            self::InReview => 'paper-airplane',
+            self::ChangesRequested => 'arrow-uturn-left',
+            self::Approved => 'check',
+            self::Scheduled => 'calendar-days',
+            self::Published => 'check-circle',
+            self::Failed => 'exclamation-triangle',
+            self::ManualNeeded => 'hand-raised',
+            self::Withdrawn => 'no-symbol',
+        };
+    }
 }

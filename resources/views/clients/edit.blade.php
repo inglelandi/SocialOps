@@ -16,12 +16,12 @@
                     <form method="POST" action="{{ route('clients.destroy', $client) }}" x-show="tab === 'basics'" x-cloak class="text-right" onsubmit="return confirm('{{ __('Delete this client and everything it owns?') }}')">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="text-sm text-red-600 hover:underline">{{ __('Delete this client') }}</button>
+                        <button type="submit" class="inline-flex items-center gap-1 text-sm text-red-600 hover:underline"><x-icon name="trash" class="h-4 w-4" />{{ __('Delete this client') }}</button>
                     </form>
 
                     <div x-show="tab === 'plan'" x-cloak class="space-y-6">
                     @if (config('features.claude_api'))
-                        <x-section :title="__('Post from a prompt')" :description="__('Write what the post should be about. Claude combines your words with the brand profile and the latest trend research and puts one post on the calendar as a Draft, with captions in both languages. You get an email with the link; from the post page you can download it or send it for approval.')">
+                        <x-section icon="light-bulb" :title="__('Post from a prompt')" :description="__('Write what the post should be about. Claude combines your words with the brand profile and the latest trend research and puts one post on the calendar as a Draft, with captions in both languages. You get an email with the link; from the post page you can download it or send it for approval.')">
                             <div class="py-5">
                                 @if (session('status') === 'post-started')
                                     <p class="mb-3 text-sm text-green-600">{{ __('The post is being written. It appears on the calendar as a Draft in a minute or two, a few minutes more when the trends are researched again.') }}</p>
@@ -53,7 +53,7 @@
                                             <textarea name="brief" rows="3" class="mt-2 block w-full border-gray-300 focus:border-brand-500 focus:ring-brand-500 rounded-md shadow-sm">{{ old('brief') }}</textarea>
                                         </details>
                                         <div class="sm:col-span-4">
-                                            <x-primary-button>{{ __('Write the post') }}</x-primary-button>
+                                            <x-primary-button><x-icon name="sparkles" class="h-4 w-4" />{{ __('Write the post') }}</x-primary-button>
                                             <x-input-error class="mt-2" :messages="$errors->draft->all()" />
                                         </div>
                                     </form>
@@ -61,7 +61,7 @@
                             </div>
                         </x-section>
 
-                        <x-section :title="__('Plan with Claude')" :description="__('Claude researches current trends for this client, follows the brand profile and puts the posts on the calendar as Drafts with captions in both languages. It takes a few minutes; you get an email when it is done. Nothing reaches the client without your review.')">
+                        <x-section icon="sparkles" :title="__('Plan with Claude')" :description="__('Claude researches current trends for this client, follows the brand profile and puts the posts on the calendar as Drafts with captions in both languages. It takes a few minutes; you get an email when it is done. Nothing reaches the client without your review.')">
                             <div class="py-5">
                                 @if (session('status') === 'plan-started')
                                     <p class="mb-3 text-sm text-green-600">{{ __('Plan started. The Drafts appear on the calendar in a few minutes.') }}</p>
@@ -94,7 +94,7 @@
                                             <textarea id="brief" name="brief" rows="3" class="mt-1 block w-full border-gray-300 focus:border-brand-500 focus:ring-brand-500 rounded-md shadow-sm" placeholder="{{ __('Paste a trend brief here to skip the web research') }}">{{ old('brief') }}</textarea>
                                         </div>
                                         <div class="sm:col-span-4">
-                                            <x-primary-button>{{ __('Plan with Claude') }}</x-primary-button>
+                                            <x-primary-button><x-icon name="sparkles" class="h-4 w-4" />{{ __('Plan with Claude') }}</x-primary-button>
                                             <x-input-error class="mt-2" :messages="$errors->all()" />
                                         </div>
                                     </form>
@@ -103,7 +103,7 @@
                         </x-section>
                     @else
                         @php($mcpDescription = __('Claude plans the posts with their captions and puts them on the calendar as Drafts, with a review sheet in Reports. Press the button and Claude does it at its next run, once an hour.'))
-                        <x-section :title="__('Plan with Claude')" :description="$mcpDescription">
+                        <x-section icon="sparkles" :title="__('Plan with Claude')" :description="$mcpDescription">
                             <div class="py-5" x-data="{ posts: 12, from: '{{ now()->addMonthNoOverflow()->startOfMonth()->toDateString() }}', days: 30, instruction: '', copied: false,
                                 text() { return `{{ __('Plan :posts posts for :client (client ":slug") from :from for :days days.', ['posts' => '${this.posts}', 'client' => $client->name, 'slug' => $client->slug, 'from' => '${this.from}', 'days' => '${this.days}']) }}` + (this.instruction.trim() ? ' {{ __('About:') }} ' + this.instruction.trim() + '.' : '') + ` {{ __('Use the Social Ops tools: get-planning-brief first, research the current trends for this client (the last30days skill or web search), plan the posts and write the captions in :languages, then save-plan. Publish nothing.', ['languages' => strtoupper(implode(' + ', array_merge($client->profile['languages'], $client->profile['extra_languages'] ?? [])))]) }}`; },
                                 copy() { navigator.clipboard.writeText(this.text()).then(() => { this.copied = true; setTimeout(() => this.copied = false, 2000) }) } }">
@@ -120,7 +120,7 @@
                                     <div><x-input-label for="mcp-from" :value="__('From')" /><x-text-input id="mcp-from" name="from" type="date" class="mt-1 block w-full" x-model="from" required /></div>
                                     <div><x-input-label for="mcp-days" :value="__('Days')" /><x-text-input id="mcp-days" name="days" type="number" min="1" max="92" class="mt-1 block w-full" x-model="days" required /></div>
                                     <div class="sm:col-span-4"><x-input-label for="mcp-instruction" :value="__('What the posts are about (optional)')" /><textarea id="mcp-instruction" name="instruction" rows="2" class="mt-1 block w-full border-gray-300 focus:border-brand-500 focus:ring-brand-500 rounded-md shadow-sm" x-model="instruction" placeholder="{{ __('e.g. December: gifts, Christmas opening hours, the New Year party') }}"></textarea></div>
-                                    <div class="sm:col-span-4 flex gap-2"><x-primary-button>{{ __('Queue for Claude') }}</x-primary-button><x-secondary-button type="button" x-on:click="copy()"><span x-text="copied ? '{{ __('Copied') }}' : '{{ __('Copy the request') }}'"></span></x-secondary-button></div>
+                                    <div class="sm:col-span-4 flex gap-2"><x-primary-button><x-icon name="sparkles" class="h-4 w-4" />{{ __('Queue for Claude') }}</x-primary-button><x-secondary-button type="button" x-on:click="copy()"><x-icon name="clipboard-document" class="h-4 w-4" /><span x-text="copied ? '{{ __('Copied') }}' : '{{ __('Copy the request') }}'"></span></x-secondary-button></div>
                                     <x-input-error class="sm:col-span-4" :messages="$errors->job->all()" />
                                 </form>
                                 {{-- the client's Drive folder (the Files tab) is part of the brief get-planning-brief hands Claude --}}
@@ -160,12 +160,12 @@
                     </div>
 
                     @php($importDescription = __('One row per post, the same columns as the calendar\'s CSV export. Every row becomes a Draft on the calendar; if any row is wrong, nothing is imported and the errors are listed here.'))
-                    <x-section x-show="tab === 'import'" x-cloak :title="__('Import posts from a spreadsheet')" :description="$importDescription">
+                    <x-section icon="table-cells" x-show="tab === 'import'" x-cloak :title="__('Import posts from a spreadsheet')" :description="$importDescription">
                         <div class="py-5">
                             <form method="POST" action="{{ route('posts.import', $client) }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-3">
                                 @csrf
                                 <input type="file" name="csv" accept=".csv,text/csv" required class="text-sm" />
-                                <x-primary-button>{{ __('Import') }}</x-primary-button>
+                                <x-primary-button><x-icon name="arrow-up-tray" class="h-4 w-4" />{{ __('Import') }}</x-primary-button>
                                 <a href="{{ route('posts.import.template', $client) }}" class="text-sm font-medium text-gray-900 hover:text-brand-600">{{ __('Download the template') }}</a>
                             </form>
                             <x-input-error class="mt-2" :messages="$errors->get('csv')" />

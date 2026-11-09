@@ -60,13 +60,13 @@
             @forelse ($todo as $row)
                 @include('today._post', ['post' => $row['post'], 'platforms' => $row['platforms'], 'return' => route('today', $keep())])
             @empty
-                <x-empty-state class="bg-white" :action="__('Open the calendar')" :href="route('calendar', array_filter(['date' => $day->toDateString(), 'client' => $selected?->slug]))">
+                <x-empty-state icon="check-circle" action-icon="calendar-days" class="bg-white" :action="__('Open the calendar')" :href="route('calendar', array_filter(['date' => $day->toDateString(), 'client' => $selected?->slug]))">
                     {{ $tomorrow ? __('Nothing to post tomorrow.') : ($done->isNotEmpty() ? __('Nothing left to post today.') : __('Nothing to post today.')) }}
                 </x-empty-state>
             @endforelse
 
             @if ($done->isNotEmpty())
-                <x-section :title="$tomorrow ? __('Already posted') : __('Done today')" flush data-done>
+                <x-section icon="check-circle" :title="$tomorrow ? __('Already posted') : __('Done today')" flush data-done>
                     <ul class="divide-y divide-gray-200 text-sm">
                         @foreach ($done as $post)
                             <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 sm:px-6 {{ (int) session('done') === $post->id ? 'bg-green-50' : '' }}" data-post="{{ $post->id }}">

@@ -12,7 +12,7 @@
         // the other ways stay open while one of them is being set up: a Canva search, a folder to name, an error to read
         $openOther = request()->has('canva') || $errors->hasAny(['canva', 'drive', 'dropbox']) || old('folder') !== null || in_array(session('status'), ['canva-connected', 'dropbox-connected'], true);
         $connected = array_keys(array_filter(['Google Drive' => $drive, 'Dropbox' => $dropbox?->meta['folder'] ?? null, 'Canva' => $canva]));
-        $btn = 'inline-flex items-center justify-center rounded-lg border border-gray-400 bg-white px-3.5 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50';
+        $btn = 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-400 bg-white px-3.5 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50';
         $fold = 'flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden';
         $chevron = '<svg class="h-5 w-5 flex-none text-gray-600 transition group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>';
     @endphp
@@ -20,11 +20,11 @@
     <div class="py-6" x-data="{ preview: null }" x-on:keydown.escape.window="preview = null">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
             @if (session('status'))
-                <p class="text-sm font-medium text-green-700">{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
+                <p class="flex items-center gap-1.5 text-sm font-medium text-green-700"><x-icon name="check-circle" class="h-5 w-5" />{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
             @endif
 
             {{-- Add files: the team's own upload first, the other ways folded under it --}}
-            <x-section :title="__('Add files')" :description="__('Photos and videos get the agency name and land in the files below.')">
+            <x-section icon="cloud-arrow-up" :title="__('Add files')" :description="__('Photos and videos get the agency name and land in the files below.')">
                 <form id="upload-form" method="POST" action="{{ route('assets.store', $client) }}" enctype="multipart/form-data" class="space-y-4 py-5"
                       x-data="assetUploader(@js([
                           'maxBytes' => \App\Http\Requests\InboxUploadRequest::MAX_KB * 1024,
@@ -106,7 +106,7 @@
                     </fieldset>
 
                     <div class="flex flex-wrap items-center gap-3">
-                        <x-primary-button x-bind:disabled="busy"><span x-text="buttonLabel()">{{ __('Upload') }}</span></x-primary-button>
+                        <x-primary-button x-bind:disabled="busy"><x-icon name="cloud-arrow-up" class="h-4 w-4" /><span x-text="buttonLabel()">{{ __('Upload') }}</span></x-primary-button>
                         <button type="button" x-show="items.length && ! busy" x-cloak x-on:click="items = []" class="text-sm font-medium text-gray-900 hover:text-brand-600">{{ __('Clear the list') }}</button>
                         <p x-show="summary()" x-cloak x-text="summary()" class="text-sm text-gray-600"></p>
                         <button type="button" x-show="done() && ! busy" x-cloak x-on:click="location.reload()" class="{{ $btn }}">{{ __('Show the new files') }}</button>
@@ -116,7 +116,7 @@
                 <details id="other-ways" class="group" @if ($openOther) open @endif>
                     <summary class="{{ $fold }} py-4">
                         <span class="min-w-0">
-                            <span class="block text-sm font-medium text-gray-900">{{ __('Other ways to add files') }}</span>
+                            <span class="flex items-center gap-1.5 text-sm font-medium text-gray-900"><x-icon name="cloud-arrow-down" class="h-4 w-4 text-gray-600" />{{ __('Other ways to add files') }}</span>
                             <span class="block text-sm text-gray-600">{{ __('The client’s upload link, Google Drive, Dropbox, Canva') }}@if ($connected) · {{ __('Connected: :list', ['list' => implode(', ', $connected)]) }}@endif</span>
                         </span>
                         {!! $chevron !!}
@@ -125,7 +125,7 @@
                         <x-field :label="__('Upload link for the client')" for="inbox-url" :help="__('No login needed, valid :days days. Anyone with the link can upload.', ['days' => \App\Http\Controllers\AssetController::LINK_DAYS])">
                             <div class="flex gap-2" x-data="{ copied: false }">
                                 <x-text-input id="inbox-url" type="text" class="block w-full min-w-0 font-mono text-xs" :value="$inboxUrl" readonly onclick="this.select()" />
-                                <button type="button" class="{{ $btn }} flex-none" x-on:click="navigator.clipboard.writeText(document.getElementById('inbox-url').value).then(() => { copied = true; setTimeout(() => copied = false, 2000) }).catch(() => document.getElementById('inbox-url').select())"><span x-text="copied ? '{{ __('Copied') }}' : '{{ __('Copy') }}'">{{ __('Copy') }}</span></button>
+                                <button type="button" class="{{ $btn }} flex-none" x-on:click="navigator.clipboard.writeText(document.getElementById('inbox-url').value).then(() => { copied = true; setTimeout(() => copied = false, 2000) }).catch(() => document.getElementById('inbox-url').select())"><x-icon name="clipboard-document" class="h-4 w-4" /><span x-text="copied ? '{{ __('Copied') }}' : '{{ __('Copy') }}'">{{ __('Copy') }}</span></button>
                             </div>
                         </x-field>
 
@@ -144,7 +144,7 @@
                                 <p class="text-sm text-gray-600">{{ __('Share a Drive folder with :email (viewer is enough), then paste its link here. Photos and videos the client drops in it reach this inbox within the hour.', ['email' => $driveEmail]) }}</p>
                                 <form method="POST" action="{{ route('drive.watch', $client) }}" class="mt-3 flex flex-col gap-2 sm:flex-row">@csrf
                                     <x-text-input name="folder" type="text" class="block w-full min-w-0 text-sm" :value="old('folder')" placeholder="https://drive.google.com/drive/folders/…" />
-                                    <x-primary-button class="flex-none">{{ __('Watch folder') }}</x-primary-button>
+                                    <x-primary-button class="flex-none"><x-icon name="eye" class="h-4 w-4" />{{ __('Watch folder') }}</x-primary-button>
                                 </form>
                             @else
                                 <p class="text-sm text-gray-600">{{ __('Add GOOGLE_SERVICE_ACCOUNT_JSON to .env to pull files from a shared Drive folder (docs/pilot-setup.md).') }}</p>
@@ -163,11 +163,11 @@
                             @elseif ($dropbox)
                                 <div class="flex flex-wrap items-center gap-3 text-sm text-gray-600">
                                     <span>{{ __('Connected as :name.', ['name' => $dropbox->name]) }} {{ __('Which folder? Its path in that Dropbox, for example /Clients/Almyra. A folder the client shared sits at the top level.') }}</span>
-                                    <form method="POST" action="{{ route('accounts.destroy', $dropbox) }}" onsubmit="return confirm('{{ __('Disconnect Dropbox from this client?') }}')">@csrf @method('DELETE')<button class="text-red-600 hover:underline">{{ __('Disconnect') }}</button></form>
+                                    <form method="POST" action="{{ route('accounts.destroy', $dropbox) }}" onsubmit="return confirm('{{ __('Disconnect Dropbox from this client?') }}')">@csrf @method('DELETE')<button class="inline-flex items-center gap-1 text-red-600 hover:underline"><x-icon name="link-slash" class="h-4 w-4" />{{ __('Disconnect') }}</button></form>
                                 </div>
                                 <form method="POST" action="{{ route('dropbox.watch', $client) }}" class="mt-3 flex flex-col gap-2 sm:flex-row">@csrf
                                     <x-text-input name="folder" type="text" class="block w-full min-w-0 text-sm" :value="old('folder')" placeholder="/Clients/Almyra" />
-                                    <x-primary-button class="flex-none">{{ __('Watch folder') }}</x-primary-button>
+                                    <x-primary-button class="flex-none"><x-icon name="eye" class="h-4 w-4" />{{ __('Watch folder') }}</x-primary-button>
                                 </form>
                             @elseif ($dropboxReady)
                                 <p class="text-sm text-gray-600">{{ __('Bring the photos and videos a client drops in a shared Dropbox folder into this inbox.') }}</p>
@@ -182,11 +182,11 @@
                             @if ($canva)
                                 <div class="flex flex-wrap items-center gap-3 text-sm text-gray-600">
                                     <span>{{ __('Connected as :name.', ['name' => $canva->name]) }}</span>
-                                    <form method="POST" action="{{ route('accounts.destroy', $canva) }}" onsubmit="return confirm('{{ __('Disconnect Canva from this client?') }}')">@csrf @method('DELETE')<button class="text-red-600 hover:underline">{{ __('Disconnect') }}</button></form>
+                                    <form method="POST" action="{{ route('accounts.destroy', $canva) }}" onsubmit="return confirm('{{ __('Disconnect Canva from this client?') }}')">@csrf @method('DELETE')<button class="inline-flex items-center gap-1 text-red-600 hover:underline"><x-icon name="link-slash" class="h-4 w-4" />{{ __('Disconnect') }}</button></form>
                                 </div>
                                 <form method="GET" action="{{ route('clients.assets', $client) }}" class="mt-3 flex flex-col gap-2 sm:flex-row">
                                     <x-text-input name="canva" type="text" class="block w-full min-w-0 text-sm" :value="request('canva')" placeholder="{{ __('Search designs, or leave empty for the newest') }}" />
-                                    <x-primary-button class="flex-none">{{ __('Find') }}</x-primary-button>
+                                    <x-primary-button class="flex-none"><x-icon name="magnifying-glass" class="h-4 w-4" />{{ __('Find') }}</x-primary-button>
                                 </form>
                                 @if ($canvaError) <p class="mt-2 text-sm text-red-600">{{ $canvaError }}</p> @endif
                                 @if ($designs !== null)
@@ -216,7 +216,7 @@
                                                     <x-input-label for="canva-pillar" :value="__('Pillar')" />
                                                     <select id="canva-pillar" name="pillar" class="mt-1 block rounded-md border-gray-300 text-sm shadow-sm"><option value="">—</option>@foreach ($pillars as $pillar)<option value="{{ $pillar }}">{{ $pillarName($pillar) }}</option>@endforeach</select>
                                                 </div>
-                                                <x-primary-button>{{ __('Import ticked designs') }}</x-primary-button>
+                                                <x-primary-button><x-icon name="arrow-down-tray" class="h-4 w-4" />{{ __('Import ticked designs') }}</x-primary-button>
                                                 <span class="text-gray-600">{{ __('They appear in the list below within a minute or two; a failed import shows on the Jobs page and in Slack.') }}</span>
                                             </div>
                                         @endif
@@ -239,7 +239,7 @@
                     <details id="tools" class="group" @if ($errors->reel->any()) open @endif>
                         <summary class="{{ $fold }} px-6 py-4">
                             <span class="min-w-0">
-                                <span class="block text-lg font-semibold text-gray-900">{{ __('Tools') }}</span>
+                                <span class="flex items-center gap-2 text-lg font-semibold text-gray-900"><x-icon name="film" class="h-5 w-5 text-brand-600" />{{ __('Tools') }}</span>
                                 <span class="block text-sm text-gray-600">{{ __('Make a Reel') }}</span>
                             </span>
                             {!! $chevron !!}
@@ -280,7 +280,7 @@
                                             <x-input-label for="reel-pillar" :value="__('Pillar')" />
                                             <select id="reel-pillar" name="pillar" class="mt-1 block rounded-md border-gray-300 text-sm shadow-sm"><option value="">—</option>@foreach ($pillars as $pillar)<option value="{{ $pillar }}" @selected(old('pillar') === $pillar)>{{ $pillarName($pillar) }}</option>@endforeach</select>
                                         </div>
-                                        <x-primary-button>{{ __('Make the Reel') }}</x-primary-button>
+                                        <x-primary-button><x-icon name="film" class="h-4 w-4" />{{ __('Make the Reel') }}</x-primary-button>
                                     </div>
                                 </form>
                             @else
@@ -292,11 +292,11 @@
             @endif
 
             {{-- The files: filters, then a grid of big thumbnails; a click opens the preview --}}
-            <x-section :title="__('Files').' ('.$assets->count().')'" flush>
+            <x-section icon="photo" :title="__('Files').' ('.$assets->count().')'" flush>
                 <form method="GET" action="{{ route('clients.assets', $client) }}" class="grid grid-cols-2 gap-2 px-4 py-3 text-sm sm:flex sm:flex-wrap sm:items-center sm:px-6" data-filters>
                     <div class="col-span-2 flex gap-2 sm:w-80">
                         <input type="search" name="q" value="{{ request('q') }}" placeholder="{{ __('Search by name or tag') }}" aria-label="{{ __('Search by name or tag') }}" class="block min-w-0 flex-1 rounded-md border-gray-300 text-sm shadow-sm">
-                        <button type="submit" class="{{ $btn }} flex-none">{{ __('Search') }}</button>
+                        <button type="submit" class="{{ $btn }} flex-none"><x-icon name="magnifying-glass" class="h-4 w-4" />{{ __('Search') }}</button>
                     </div>
                     <select name="kind" onchange="this.form.submit()" aria-label="{{ __('Photos and videos') }}" class="col-span-2 min-w-0 rounded-md border-gray-300 text-sm shadow-sm">
                         <option value="">{{ __('Photos and videos') }}</option>
@@ -368,22 +368,22 @@
                                     @endforelse
                                 </div>
                                 <div class="mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-2 sm:gap-x-3">
-                                    <button type="button" x-on:click="preview = @js($open)" class="font-medium text-gray-900 hover:text-brand-600">{{ __('Open') }}</button>
-                                    <a href="{{ route('assets.download', $asset) }}" class="font-medium text-gray-900 hover:text-brand-600">{{ __('Download') }}</a>
+                                    <button type="button" x-on:click="preview = @js($open)" class="inline-flex items-center gap-1 font-medium text-gray-900 hover:text-brand-600"><x-icon name="eye" class="h-4 w-4" />{{ __('Open') }}</button>
+                                    <a href="{{ route('assets.download', $asset) }}" class="inline-flex items-center gap-1 font-medium text-gray-900 hover:text-brand-600"><x-icon name="arrow-down-tray" class="h-4 w-4" />{{ __('Download') }}</a>
                                     <form method="POST" action="{{ route('assets.destroy', $asset) }}" data-confirm="{{ $confirm }}" onsubmit="return confirm(this.dataset.confirm)">
                                         @csrf
                                         @method('DELETE')
                                         @foreach ($keep as $key => $value)<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endforeach
-                                        <button type="submit" class="text-red-600 hover:underline">{{ __('Delete') }}</button>
+                                        <button type="submit" class="inline-flex items-center gap-1 text-red-600 hover:underline"><x-icon name="trash" class="h-4 w-4" />{{ __('Delete') }}</button>
                                     </form>
                                 </div>
                             </div>
                         </article>
                     @empty
                         @if ($filtered)
-                            <x-empty-state class="col-span-full" :action="__('Show everything')" :href="route('clients.assets', $client)">{{ __('Nothing matches these filters.') }}</x-empty-state>
+                            <x-empty-state icon="funnel" class="col-span-full" :action="__('Show everything')" :href="route('clients.assets', $client)">{{ __('Nothing matches these filters.') }}</x-empty-state>
                         @else
-                            <x-empty-state class="col-span-full" :action="__('Upload link')" href="#inbox-url">{{ __('Nothing uploaded yet. Add files above, or send the client the upload link.') }}</x-empty-state>
+                            <x-empty-state icon="photo" class="col-span-full" :action="__('Upload link')" href="#inbox-url">{{ __('Nothing uploaded yet. Add files above, or send the client the upload link.') }}</x-empty-state>
                         @endif
                     @endforelse
                 </div>
@@ -407,7 +407,7 @@
                         <p x-show="preview.broken" class="px-6 py-16 text-center text-sm text-white">{{ __('This browser cannot show this file. Download it to see it.') }}</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-3 px-4 py-3">
-                        <a x-bind:href="preview.download" class="inline-flex items-center justify-center rounded-lg bg-brand-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-600">{{ __('Download') }}</a>
+                        <a x-bind:href="preview.download" class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-600"><x-icon name="arrow-down-tray" class="h-4 w-4" />{{ __('Download') }}</a>
                         <a x-bind:href="preview.url" target="_blank" rel="noopener" class="text-sm font-medium text-gray-900 hover:text-brand-600">{{ __('Open in a new tab') }}</a>
                     </div>
                 </div>

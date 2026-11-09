@@ -4,6 +4,6 @@
     <form method="POST" action="{{ route('setup.store') }}" class="mt-4 space-y-4">
         @csrf
         @include('staff._fields')
-        <x-primary-button class="w-full justify-center">{{ __('Create and log in') }}</x-primary-button>
+        <x-primary-button class="w-full justify-center"><x-icon name="user-plus" class="h-4 w-4" />{{ __('Create and log in') }}</x-primary-button>
     </form>
 </x-guest-layout>

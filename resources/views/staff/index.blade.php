@@ -6,7 +6,7 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
             @if (session('status'))
-                <p class="text-sm text-green-600">{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
+                <p class="flex items-center gap-1.5 text-sm text-green-600"><x-icon name="check-circle" class="h-5 w-5" />{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
             @endif
             <div class="bg-white overflow-hidden rounded-xl border border-gray-300">
                 <table class="min-w-full text-sm">
@@ -61,7 +61,7 @@
             @if (session('token'))
                 <p class="text-sm text-yellow-800 bg-yellow-50 rounded-md p-3">{{ __('New API token, copy it now, it is not shown again:') }} <code class="font-mono select-all">{{ session('token') }}</code></p>
             @endif
-            <x-section :title="__('API tokens')" :description="__('for scripts and other tools, see docs/api.md')">
+            <x-section icon="key" :title="__('API tokens')" :description="__('for scripts and other tools, see docs/api.md')">
                 <table class="min-w-full text-sm">
                     <thead class="text-left text-xs uppercase tracking-wide text-gray-600"><tr><th class="py-2 pr-6 font-medium">{{ __('Name') }}</th><th class="py-2 pr-6 font-medium">{{ __('Client') }}</th><th class="py-2 pr-6 font-medium">{{ __('Last used') }}</th><th></th></tr></thead>
                     <tbody class="divide-y divide-gray-200">
@@ -82,14 +82,14 @@
                     <div><x-input-label for="token-name" :value="__('Token name')" /><x-text-input id="token-name" name="name" type="text" class="mt-1 block" required maxlength="60" placeholder="{{ __('e.g. Zapier, reporting script') }}" /></div>
                     <div><x-input-label for="token-client" :value="__('Limited to')" />
                         <select id="token-client" name="client_id" class="mt-1 block border-gray-300 rounded-md shadow-sm text-sm"><option value="">{{ __('All clients') }}</option>@foreach ($clients as $client)<option value="{{ $client->id }}">{{ $client->name }}</option>@endforeach</select></div>
-                    <x-primary-button>{{ __('Create token') }}</x-primary-button>
+                    <x-primary-button><x-icon name="key" class="h-4 w-4" />{{ __('Create token') }}</x-primary-button>
                 </form>
             </x-section>
-            <x-section :title="__('Add a login')" class="max-w-xl">
+            <x-section icon="user-plus" :title="__('Add a login')" class="max-w-xl">
                 <form method="POST" action="{{ route('staff.store') }}" class="space-y-4 py-5">
                     @csrf
                     @include('staff._fields')
-                    <x-primary-button>{{ __('Add') }}</x-primary-button>
+                    <x-primary-button><x-icon name="plus" class="h-4 w-4" />{{ __('Add') }}</x-primary-button>
                 </form>
             </x-section>
         </div>

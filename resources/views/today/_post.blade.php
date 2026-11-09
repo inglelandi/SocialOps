@@ -3,7 +3,7 @@
 @php($late = $post->scheduled_at->lt(today()))
 @php($label = 'mb-1 text-xs font-semibold uppercase tracking-wide text-gray-600')
 @php($box = 'whitespace-pre-wrap break-words rounded-md bg-gray-50 p-3 text-[15px] leading-relaxed text-gray-900')
-@php($download = 'flex min-h-11 items-center justify-center rounded-lg border border-gray-400 bg-white px-3 text-sm font-medium text-gray-900 hover:bg-gray-50')
+@php($download = 'flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-gray-400 bg-white px-3 text-sm font-medium text-gray-900 hover:bg-gray-50')
 <article id="post-{{ $post->id }}" data-post="{{ $post->id }}" class="rounded-xl border border-gray-300 bg-white">
     <header class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-gray-300 px-4 py-3 sm:px-6">
         <span class="text-xl font-semibold tabular-nums text-gray-900">{{ $post->scheduled_at->format('H:i') }}</span>
@@ -36,7 +36,7 @@
                                     <span class="flex h-full w-full items-center justify-center text-sm text-gray-600">&#9654; {{ __('video') }}</span>
                                 @endif
                             </a>
-                            <a href="{{ route('assets.download', $asset) }}" class="{{ $download }} mt-1.5">{{ $loop->count > 1 ? __('Download :n', ['n' => $loop->iteration]) : __('Download') }}</a>
+                            <a href="{{ route('assets.download', $asset) }}" class="{{ $download }} mt-1.5"><x-icon name="arrow-down-tray" class="h-4 w-4" />{{ $loop->count > 1 ? __('Download :n', ['n' => $loop->iteration]) : __('Download') }}</a>
                         </div>
                     @endforeach
                 </div>
@@ -46,7 +46,7 @@
                     <a href="{{ route('posts.image', [$post, $lang]) }}" class="{{ $download }}" title="{{ __('The first photo with the design text burned in, ready to post') }}">{{ __('Image with text :lang', ['lang' => strtoupper($lang)]) }}</a>
                 @endforeach
             @endif
-            <a href="{{ route('posts.export', $post) }}" class="{{ $download }}" title="{{ __('Media files plus a captions.txt, to post by hand or design in Canva') }}">{{ __('Everything as a ZIP') }}</a>
+            <a href="{{ route('posts.export', $post) }}" class="{{ $download }}" title="{{ __('Media files plus a captions.txt, to post by hand or design in Canva') }}"><x-icon name="archive-box" class="h-4 w-4" />{{ __('Everything as a ZIP') }}</a>
         </div>
 
         <div class="min-w-0 space-y-4">
@@ -95,7 +95,7 @@
 
             @if ($post->brief || array_filter($post->settings['design'] ?? []))
                 <details class="group rounded-lg border border-gray-300 text-sm">
-                    <summary class="flex min-h-11 cursor-pointer list-none items-center [&::-webkit-details-marker]:hidden justify-between px-3 font-medium text-gray-900">{{ __('Brief and design text') }} <span aria-hidden="true" class="text-gray-600 transition group-open:rotate-180">&#9662;</span></summary>
+                    <summary class="flex min-h-11 cursor-pointer list-none items-center [&::-webkit-details-marker]:hidden justify-between px-3 font-medium text-gray-900"><span class="inline-flex items-center gap-1.5"><x-icon name="document-text" class="h-4 w-4 text-gray-600" />{{ __('Brief and design text') }}</span> <span aria-hidden="true" class="text-gray-600 transition group-open:rotate-180">&#9662;</span></summary>
                     <div class="space-y-3 border-t border-gray-300 p-3">
                         @if ($post->brief)
                             <p class="whitespace-pre-line text-gray-900">{{ $post->brief }}</p>
@@ -114,7 +114,7 @@
                 @csrf
                 <input type="hidden" name="state" value="published">
                 <input type="hidden" name="return" value="{{ $return }}">
-                <button type="submit" class="flex min-h-12 w-full items-center justify-center rounded-lg bg-brand-500 px-6 text-base font-semibold text-white hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 sm:w-auto">{{ __('Mark published') }}</button>
+                <button type="submit" class="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-6 text-base font-semibold text-white hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 sm:w-auto"><x-icon name="check-circle" class="h-5 w-5" />{{ __('Mark published') }}</button>
             </form>
         </div>
     </div>

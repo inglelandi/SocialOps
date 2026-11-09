@@ -14,7 +14,7 @@
         <p class="mt-2 text-sm text-gray-600">{{ __('If you copied the link, check that nothing is missing at the end. Otherwise ask for a new one and we will send it to you.') }}</p>
         <form method="POST" action="{{ route('links.request') }}" class="mt-5">
             <input type="hidden" name="path" value="{{ $path }}">
-            <x-primary-button class="w-full justify-center">{{ __('Ask for a new link') }}</x-primary-button>
+            <x-primary-button class="w-full justify-center"><x-icon name="envelope" class="h-4 w-4" />{{ __('Ask for a new link') }}</x-primary-button>
         </form>
     @endif
 </x-guest-layout>

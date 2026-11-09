@@ -6,7 +6,7 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
             @if (session('status'))
-                <p class="text-sm text-green-600">{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
+                <p class="flex items-center gap-1.5 text-sm text-green-600"><x-icon name="check-circle" class="h-5 w-5" />{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
             @endif
             @error('connect') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
 
@@ -29,13 +29,13 @@
                                 @endif
                                 <form method="POST" action="{{ route('accounts.destroy', $account) }}" class="{{ in_array($platform, ['instagram', 'facebook']) ? '' : 'ml-auto' }}" onsubmit="return confirm('{{ __('Disconnect this account?') }}')">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:underline">{{ __('Disconnect') }}</button>
+                                    <button type="submit" class="inline-flex items-center gap-1 text-red-600 hover:underline"><x-icon name="link-slash" class="h-4 w-4" />{{ __('Disconnect') }}</button>
                                 </form>
                             @else
                                 <span class="text-gray-500">{{ __('not connected') }}</span>
                             @endif
                             @if ($loop->first)
-                                <a href="{{ route('accounts.connect', [$client, $provider]) }}" class="{{ $account ? '' : 'ml-auto' }} inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">{{ $account ? __('Reconnect') : __('Connect') }} {{ ['meta' => 'Facebook / Instagram', 'tiktok' => 'TikTok'][$provider] }}</a>
+                                <a href="{{ route('accounts.connect', [$client, $provider]) }}" class="{{ $account ? '' : 'ml-auto' }} inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"><x-icon name="link" class="h-4 w-4" />{{ $account ? __('Reconnect') : __('Connect') }} {{ ['meta' => 'Facebook / Instagram', 'tiktok' => 'TikTok'][$provider] }}</a>
                             @endif
                         </div>
                     @endforeach

@@ -8,11 +8,11 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
             @if (session('status'))
-                <p class="text-sm text-green-600">{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
+                <p class="flex items-center gap-1.5 text-sm text-green-600"><x-icon name="check-circle" class="h-5 w-5" />{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
             @endif
             @error('posts') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
 
-            <x-section :title="__('Send posts for approval')" :description="$policy">
+            <x-section icon="paper-airplane" :title="__('Send posts for approval')" :description="$policy">
                 <form method="POST" action="{{ route('reviews.store', $client) }}" class="py-5">
                     @csrf
                     <div class="space-y-2">
@@ -24,17 +24,17 @@
                                 <span class="text-gray-600">{{ $post->scheduled_at?->translatedFormat('D d-m-Y H:i') ?? __('not scheduled') }}</span>
                             </label>
                         @empty
-                            <x-empty-state :action="__('New post')" :href="route('posts.create', $client)">{{ __('No draft posts waiting. A post shows here once it exists on the calendar; tick it and send it, the approvers get the link by email.') }}</x-empty-state>
+                            <x-empty-state icon="paper-airplane" action-icon="plus" :action="__('New post')" :href="route('posts.create', $client)">{{ __('No draft posts waiting. A post shows here once it exists on the calendar; tick it and send it, the approvers get the link by email.') }}</x-empty-state>
                         @endforelse
                     </div>
                     @if ($candidates->isNotEmpty())
-                        <x-primary-button class="mt-4">{{ __('Send for approval') }}</x-primary-button>
+                        <x-primary-button class="mt-4"><x-icon name="paper-airplane" class="h-4 w-4" />{{ __('Send for approval') }}</x-primary-button>
                     @endif
                 </form>
             </x-section>
 
             @foreach ($reviews as $review)
-                <x-section :title="__('Sent :at', ['at' => $review->created_at->translatedFormat('D d-m-Y H:i')])" :description="__('due :at', ['at' => $review->due_at->translatedFormat('D d-m-Y H:i')])" class="text-sm">
+                <x-section icon="envelope" :title="__('Sent :at', ['at' => $review->created_at->translatedFormat('D d-m-Y H:i')])" :description="__('due :at', ['at' => $review->due_at->translatedFormat('D d-m-Y H:i')])" class="text-sm">
                     <div class="flex flex-wrap items-center gap-3 py-4">
                         @if ($review->completed_at)
                             <span class="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">{{ __('Answered :at', ['at' => $review->completed_at->translatedFormat('D d-m-Y H:i')]) }}</span>

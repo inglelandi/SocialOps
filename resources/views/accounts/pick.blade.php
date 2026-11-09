@@ -19,7 +19,7 @@
                 @endforelse
                 <x-input-error class="mt-2" :messages="$errors->get('picked')" />
                 @if ($candidates)
-                    <x-primary-button>{{ __('Connect the ticked accounts') }}</x-primary-button>
+                    <x-primary-button><x-icon name="link" class="h-4 w-4" />{{ __('Connect the ticked accounts') }}</x-primary-button>
                 @endif
                 <a href="{{ $return }}" class="ml-4 text-gray-600 hover:underline">{{ __('Cancel') }}</a>
             </form>

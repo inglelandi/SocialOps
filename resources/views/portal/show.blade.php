@@ -69,8 +69,8 @@
                         <input type="hidden" name="name" value="{{ old('name', $name) }}">
                         <textarea name="comment" rows="2" maxlength="2000" class="block w-full border-gray-300 focus:border-brand-500 focus:ring-brand-500 rounded-md shadow-sm" placeholder="{{ __('Comment (needed when you ask for changes)') }}">{{ old('post_id') == $post->id ? old('comment') : '' }}</textarea>
                         <div class="flex gap-2">
-                            <button type="submit" name="decision" value="approved" class="flex-1 py-3 rounded-md bg-green-600 text-white font-semibold">{{ __('Approve') }}</button>
-                            <button type="submit" name="decision" value="changes_requested" class="flex-1 py-3 rounded-md border border-orange-400 text-orange-700 font-semibold">{{ __('Request changes') }}</button>
+                            <button type="submit" name="decision" value="approved" class="inline-flex flex-1 items-center justify-center gap-2 py-3 rounded-md bg-green-600 text-white font-semibold"><x-icon name="check" class="h-5 w-5" />{{ __('Approve') }}</button>
+                            <button type="submit" name="decision" value="changes_requested" class="inline-flex flex-1 items-center justify-center gap-2 py-3 rounded-md border border-orange-400 text-orange-700 font-semibold"><x-icon name="pencil-square" class="h-5 w-5" />{{ __('Request changes') }}</button>
                         </div>
                     </form>
                 @endif

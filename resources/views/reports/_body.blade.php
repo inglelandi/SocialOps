@@ -12,7 +12,7 @@
     <div class="py-6">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
             @if (session('status'))
-                <p class="text-sm text-green-600">{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
+                <p class="flex items-center gap-1.5 text-sm text-green-600"><x-icon name="check-circle" class="h-5 w-5" />{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
             @endif
             @error('send') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
             <div class="bg-white p-6 rounded-xl border border-gray-300 text-sm text-gray-800 report">{!! $html !!}</div>
