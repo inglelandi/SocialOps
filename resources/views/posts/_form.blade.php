@@ -49,6 +49,18 @@
             @endif
         </div>
     </div>
+    <div>
+        {{-- Post::spawnRepeat(): once published, the next copy is drafted and goes through approval again; changing only this keeps an approved post approved --}}
+        @php($repeat = old('settings.repeat', $post->settings['repeat'] ?? ''))
+        <x-input-label for="repeat" :value="__('Repeat')" />
+        <select id="repeat" name="settings[repeat]" class="{{ $control }}">
+            <option value="">{{ __('Does not repeat') }}</option>
+            <option value="weekly" @selected($repeat === 'weekly')>{{ __('Every week') }}</option>
+            <option value="monthly" @selected($repeat === 'monthly')>{{ __('Every month') }}</option>
+        </select>
+        <p class="mt-1 text-xs text-gray-600">{{ __('Once it is published, a copy is drafted for a week or a month later and goes through approval again.') }}</p>
+        <x-input-error class="mt-2" :messages="$errors->get('settings.repeat')" />
+    </div>
 </div>
 <div class="py-5">
     <x-input-label for="brief" :value="__('What the post is about')" />

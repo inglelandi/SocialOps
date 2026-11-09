@@ -37,6 +37,9 @@ class Post extends Model
     /** Changing any of these on a locked post sends it back to review. */
     public const CONTENT_FIELDS = ['platforms', 'format', 'pillar', 'brief', 'settings'];
 
+    /** Settings that say how the post is planned, not what the client approved: changing only these keeps an approved post approved (every repeated copy goes through approval itself). */
+    public const PLANNING_SETTINGS = ['repeat', 'repeated_as'];
+
     /** Instagram's limit on collab invites per post. */
     public const MAX_COLLABORATORS = 3;
 
@@ -66,7 +69,7 @@ class Post extends Model
             }
         });
         static::updating(function (Post $post) {
-            if ($post->state->isLocked() && $post->state !== PostState::Published && $post->isDirty(self::CONTENT_FIELDS)) {
+            if ($post->state->isLocked() && $post->state !== PostState::Published && $post->contentChanged()) {
                 $post->state = PostState::InReview;
             }
         });
@@ -307,7 +310,7 @@ class Post extends Model
     }
 
     /**
-     * The form's (or update-post's) settings over the stored ones. Keys the sender does not show stay (repeat, collaborators,
+     * The form's (or update-post's) settings over the stored ones. Keys the sender does not show stay (repeat when the API leaves it out, collaborators,
      * TikTok while posting is off), and when nothing really changed the stored value comes back as it was, so saving an
      * approved post untouched keeps it approved (empty, null and false count as "not set").
      */
@@ -316,6 +319,17 @@ class Post extends Model
         $merged = array_replace_recursive($stored ?? [], $incoming);
 
         return self::setValues($merged) == self::setValues($stored ?? []) ? $stored : $merged;
+    }
+
+    /** A change the client would have to see again: a content field, or settings beyond the planning ones (PLANNING_SETTINGS). */
+    private function contentChanged(): bool
+    {
+        if ($this->isDirty(array_diff(self::CONTENT_FIELDS, ['settings']))) {
+            return true;
+        }
+
+        return $this->isDirty('settings')
+            && self::setValues(Arr::except($this->settings ?? [], self::PLANNING_SETTINGS)) != self::setValues(Arr::except($this->getOriginal('settings') ?? [], self::PLANNING_SETTINGS));
     }
 
     /** The settings without the empty values, for comparing what a post really has set. */

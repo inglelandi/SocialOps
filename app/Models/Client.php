@@ -155,12 +155,27 @@ class Client extends Model
         return null;
     }
 
-    /** The interface language of this client's own pages and mails: its first profile language when the app speaks it, else the default. */
+    /**
+     * The interface language of this client's own pages, mails, review sheet, Word file and plan: the first of its profile
+     * languages the app speaks; a client whose languages the app does not speak (German, French…) gets English, not the
+     * Greek default (Panos, 2026-11-09). Only a client with no languages at all gets the app default.
+     */
     public function uiLocale(): string
     {
-        $first = $this->profile['languages'][0] ?? null;
+        return self::uiLocaleFor($this->profile ?? []);
+    }
 
-        return isset(config('app.locales')[$first]) ? $first : config('app.locale');
+    /** uiLocale() for a profile array: the planner holds the profile, not the model. */
+    public static function uiLocaleFor(array $profile): string
+    {
+        $languages = $profile['languages'] ?? [];
+        foreach ($languages as $language) {
+            if (is_string($language) && isset(config('app.locales')[$language])) {
+                return $language;
+            }
+        }
+
+        return $languages === [] ? config('app.default_locale', config('app.locale')) : 'en';
     }
 
     /** Fill {{phone}}-style placeholders from the profile's fields; an unknown one stays as written. */
