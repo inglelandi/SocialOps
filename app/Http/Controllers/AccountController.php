@@ -91,10 +91,15 @@ class AccountController extends Controller
         return redirect()->route('clients.accounts', $account->client_id)->with('status', __(':n posts imported', ['n' => $n]));
     }
 
+    /** Disconnect an account; also unlinks an intake folder (Drive, Dropbox, Canva: back to the assets page) or the reference folder (back to the Files tab, its documents go with it). */
     public function destroy(Account $account): RedirectResponse
     {
         $account->delete();
 
-        return redirect()->route('clients.accounts', $account->client_id)->with('status', 'account-disconnected');
+        return match ($account->platform) {
+            'drive_docs' => redirect()->route('clients.files', $account->client_id)->with('status', __('Folder unlinked, its files are forgotten here')),
+            'drive', 'dropbox', 'canva' => redirect()->route('clients.assets', $account->client_id)->with('status', 'account-disconnected'),
+            default => redirect()->route('clients.accounts', $account->client_id)->with('status', 'account-disconnected'),
+        };
     }
 }

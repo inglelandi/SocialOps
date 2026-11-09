@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Client;
+use App\Planning\ClientReference;
 use App\Planning\DraftBatch;
 use App\Planning\PlanRequest;
 use App\Planning\PlanWriter;
@@ -45,7 +46,7 @@ class PlanContent extends Command
             $brief = $client->reports()->where('kind', 'trend_brief')->where('created_at', '>=', now()->subDays(7))->latest('id')->value('body');
         }
 
-        $result = $batch->run($request, $brief, fn (string $step) => $this->line($step), $client->recentTopics());
+        $result = $batch->run($request, $brief, fn (string $step) => $this->line($step), $client->recentTopics(), ClientReference::for($client));
 
         $sheet = $writer->write($client, $result, fileBrief: $brief === null);
 

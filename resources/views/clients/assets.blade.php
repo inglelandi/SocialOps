@@ -138,6 +138,8 @@
                                     <form method="POST" action="{{ route('folders.pull', [$client, 'drive']) }}">@csrf<button class="font-medium text-gray-900 hover:text-brand-600">{{ __('Check now') }}</button></form>
                                     <form method="POST" action="{{ route('accounts.destroy', $drive) }}" onsubmit="return confirm('{{ __('Stop watching this folder?') }}')">@csrf @method('DELETE')<button class="text-red-600 hover:underline">{{ __('Stop watching') }}</button></form>
                                 </div>
+                                {{-- the same folder often holds the client's documents too: those are the Files tab's business --}}
+                                <p class="mt-2 text-sm text-gray-600"><a href="{{ route('clients.files', $client) }}" class="font-medium text-gray-900 hover:text-brand-600">{{ __('Documents in this folder (previous posts, menus, briefs) are read on the Files tab.') }}</a></p>
                             @elseif ($driveEmail)
                                 <p class="text-sm text-gray-600">{{ __('Share a Drive folder with :email (viewer is enough), then paste its link here. Photos and videos the client drops in it reach this inbox within the hour.', ['email' => $driveEmail]) }}</p>
                                 <form method="POST" action="{{ route('drive.watch', $client) }}" class="mt-3 flex flex-col gap-2 sm:flex-row">@csrf

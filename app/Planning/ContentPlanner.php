@@ -18,9 +18,10 @@ class ContentPlanner
 
     /**
      * @param  list<string>  $recent  titles or captions of recent posts, so angles are not repeated
+     * @param  array{previous_posts?: string, reference?: string}  $reference  the client's Drive files (ClientReference::for): what it posted before, and its facts
      * @return array{posts: list<array>, warnings: list<string>}
      */
-    public function plan(PlanRequest $request, string $trendBrief, array $recent = []): array
+    public function plan(PlanRequest $request, string $trendBrief, array $recent = [], array $reference = []): array
     {
         // an instruction from the team decides the topic, so the pillar quota does not apply
         $quota = $request->instruction === '' && $request->profile['pillars'] ? PillarQuota::split($request->profile['pillars'], $request->count) : [];
@@ -32,6 +33,8 @@ class ContentPlanner
                 'quota' => PillarQuota::line($quota, $request->instruction),
                 'trend_brief' => $trendBrief,
                 'recent' => $recent,
+                'previous_posts' => $reference['previous_posts'] ?? '',
+                'reference' => $reference['reference'] ?? '',
             ])]],
             outputConfig: ['format' => ['type' => 'json_schema', 'schema' => self::schema($request->platforms, $quota ? array_keys($quota) : array_keys($request->profile['pillars']))]],
         );

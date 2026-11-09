@@ -3,7 +3,9 @@
 namespace App\Mcp\Tools;
 
 use App\Http\Requests\PostRequest;
+use App\Models\Client;
 use App\Models\Post;
+use App\Planning\ClientReference;
 use App\Planning\PillarQuota;
 use App\Planning\PlanRequest;
 use App\Planning\Prompt;
@@ -16,7 +18,7 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Step 1 of planning a batch for a client: the brief you plan from. It holds the brand profile, the pillar quota for the batch, the publishing window with its key dates, holidays and posting slots, the recent posts not to repeat, the formats and the caption rules. Research the current trends yourself (the last30days skill or web search), plan the posts, write the captions, then hand everything to save-plan. Nothing is published.')]
+#[Description('Step 1 of planning a batch for a client: the brief you plan from. It holds the brand profile, the pillar quota for the batch, the publishing window with its key dates, holidays and posting slots, the recent posts not to repeat, the client\'s own Drive files (the posts it published before Social Ops, not to repeat, and its reference files, as facts), the formats and the caption rules. Research the current trends yourself (the last30days skill or web search), plan the posts, write the captions, then hand everything to save-plan. Nothing is published.')]
 class GetPlanningBrief extends Tool
 {
     use ScopedToToken;
@@ -43,13 +45,16 @@ class GetPlanningBrief extends Tool
 
         $quota = $plan->instruction === '' && $profile['pillars'] ? PillarQuota::split($profile['pillars'], $plan->count) : [];
         $languages = array_merge($profile['languages'], $profile['extra_languages'] ?? []);
+        $reference = ClientReference::for($client);
         $prompt = Prompt::render('content-plan', $plan->promptVars() + [
             'quota' => PillarQuota::line($quota, $plan->instruction),
             'trend_brief' => "Research it yourself before planning (the last30days skill, or web search): what people in {$profile['location']} and the guests of a {$profile['type']} talk about between {$plan->from->toDateString()} and {$plan->to->toDateString()}, the formats and sounds that work now on ".implode(', ', $plan->platforms).', and the moments of the season. Name each signal you use.',
             'recent' => $client->recentTopics(),
+            'previous_posts' => $reference['previous_posts'],
+            'reference' => $reference['reference'],
         ]);
 
-        return Response::json([
+        $brief = [
             'client' => $client->slug,
             'window' => ['start' => $plan->from->toDateString(), 'end' => $plan->to->toDateString()],
             'count' => $plan->count,
@@ -59,10 +64,34 @@ class GetPlanningBrief extends Tool
             'formats' => Post::FORMATS,
             'languages' => $languages,
             'prompt' => $prompt,
+            'reference_folder' => $reference['folder'],
+            'reference_files' => $reference['files'],
             'caption_rules' => 'For each post write captions per platform and language ('.implode(', ', $languages).') in the voice above, the hook in the first line, placeholders like {{phone}} as written in the profile fields. Limits: '
                 .implode(', ', array_map(fn ($p, $n) => "{$p} {$n}", array_keys(PostRequest::CAPTION_MAX), PostRequest::CAPTION_MAX)).' characters. '.self::hashtagRule($profile['hashtags'] ?? []).' Add alt text per language and the design text (what goes on the graphic or in the video). Greek captions are reviewed by a person; do not publish anything.',
             'then' => 'Call save-plan with the client, the trend brief you wrote (Markdown) and the posts: date, platforms, format, pillar, title, angle, trend_signal, why_now, asset_brief, caption_brief, captions {'.implode(', ', array_map(fn ($l) => "{$l}: {platform: caption}", $languages)).', hashtags: [], alt_text: {lang: text}, design: {lang: text}, notes_for_reviewer}.',
-        ]);
+        ];
+        if ($note = self::referenceNote($client, $reference)) {
+            $brief['note'] = $note;
+        }
+
+        return Response::json($brief);
+    }
+
+    /** A folder is linked but gave the brief nothing: say so, so Claude does not take "none" for "the client has no files". */
+    private static function referenceNote(Client $client, array $reference): ?string
+    {
+        if ($reference['folder'] === null) {
+            return null;
+        }
+        $error = $client->accounts()->where('platform', 'drive_docs')->first()?->meta['error'] ?? null;
+        if ($error) {
+            return "The client's Drive folder \"{$reference['folder']['name']}\" could not be read: {$error}. The two file sections above hold what was read before, if anything.";
+        }
+        if ($reference['previous_posts'] === '' && $reference['reference'] === '') {
+            return "The client's Drive folder \"{$reference['folder']['name']}\" is linked but nothing has been read from it yet: no readable file (PDFs are not read), the first read is still running, or every file is marked Not used. Plan from the profile.";
+        }
+
+        return null;
     }
 
     /** The profile's hashtag rule as a sentence: none when it allows 0 and names none to always use, no empty lists read out. */
