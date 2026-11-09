@@ -40,7 +40,12 @@ class ContentPlanner
         );
 
         ClaudeCall::record($message, 'plan', $request->profile['slug']);
-        $posts = Reply::json($message)['posts'];
+        // fixed_date is optional in the schema: absent means the post may move to a posting slot (PlanWriter)
+        $posts = array_map(function (array $post) {
+            $post['fixed_date'] = (bool) ($post['fixed_date'] ?? false);
+
+            return $post;
+        }, Reply::json($message)['posts']);
 
         return ['posts' => $posts, 'warnings' => self::check($posts, $request, $quota)];
     }
@@ -99,6 +104,7 @@ class ContentPlanner
                     'why_now' => $string,
                     'asset_brief' => $string,
                     'caption_brief' => $string,
+                    'fixed_date' => ['type' => 'boolean'], // optional, so not in $keys: true pins the post to its day (PlanWriter::keepsDay()), absent reads as false
                 ],
                 'required' => $keys,
                 'additionalProperties' => false,

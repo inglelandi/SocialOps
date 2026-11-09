@@ -15,7 +15,7 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Step 2 of planning: file the plan you made from get-planning-brief. Every post becomes a Draft on the calendar (named by the convention, dated on the client\'s next free posting slot from its date, a caption per platform and language when given; captions within the post form\'s limits, else nothing is filed and the error names the post to shorten), the trend brief and a review sheet land in the client\'s reports, and the sheet is what the Word export of the θεματολογία is made from. A human reviews, sends for approval and posts; nothing is published here.')]
+#[Description('Step 2 of planning: file the plan you made from get-planning-brief. Every post becomes a Draft on the calendar (named by the convention, dated on the client\'s next free posting slot from its date, or kept on its day at the client\'s usual time when fixed_date says the post is about that day, a caption per platform and language when given; captions within the post form\'s limits, else nothing is filed and the error names the post to shorten), the trend brief and a review sheet land in the client\'s reports, and the sheet is what the Word export of the θεματολογία is made from. A human reviews, sends for approval and posts; nothing is published here.')]
 class SavePlan extends Tool
 {
     use ScopedToToken;
@@ -41,6 +41,7 @@ class SavePlan extends Tool
             'posts.*.why_now' => ['nullable', 'string', 'max:2000'],
             'posts.*.asset_brief' => ['nullable', 'string', 'max:5000'],
             'posts.*.caption_brief' => ['nullable', 'string', 'max:5000'],
+            'posts.*.fixed_date' => ['nullable', 'boolean'],
             'posts.*.captions' => ['nullable', 'array'],
             'posts.*.captions.hashtags' => ['nullable', 'array'],
             'posts.*.captions.hashtags.*' => ['string'],
@@ -56,6 +57,7 @@ class SavePlan extends Tool
             throw ValidationException::withMessages($tooLong);
         }
 
+        // no default for fixed_date: PlanWriter::keepsDay() reads an absent flag as "decide from the client's holidays"
         $posts = array_map(fn (array $post) => $post + ['pillar' => null, 'trend_signal' => null, 'why_now' => '', 'asset_brief' => '', 'caption_brief' => ''], $input['posts']);
         $dates = array_column($posts, 'date');
         $result = [
@@ -76,7 +78,7 @@ class SavePlan extends Tool
             'drafts' => count($result['posts']),
             'review_sheet' => route('reports.show', $sheet),
             'word' => route('reports.word', $sheet),
-            'posts' => array_map(fn ($p) => ['date' => $p['date'], 'time' => $p['time'], 'name' => $p['name'], 'url' => $p['url']] + (isset($p['planned_date']) ? ['planned_date' => $p['planned_date']] : []), $result['posts']),
+            'posts' => array_map(fn ($p) => ['date' => $p['date'], 'time' => $p['time'], 'fixed_date' => $p['fixed_date'], 'name' => $p['name'], 'url' => $p['url']] + (isset($p['planned_date']) ? ['planned_date' => $p['planned_date']] : []), $result['posts']),
             'next' => 'The team reviews the Drafts in the app, sends them for approval and posts them by hand.',
         ]);
     }
@@ -87,7 +89,7 @@ class SavePlan extends Tool
             'client' => $schema->string()->description('Client id or slug')->required(),
             'job' => $schema->integer()->description('The plan job from list-claude-jobs this plan answers; it leaves the queue'),
             'trend_brief' => $schema->string()->description('The trend research the plan rests on, Markdown; filed in the client\'s reports'),
-            'posts' => $schema->array()->items($schema->object()->description('date (YYYY-MM-DD), platforms [], format, pillar, title, angle, trend_signal (or null), why_now, asset_brief, caption_brief, captions {el: {instagram: "...", facebook: "..."}, en: {...}, hashtags: ["#chania"], alt_text: {el: "...", en: "..."}, design: {el: "...", en: "..."}, notes_for_reviewer: "..."}'))->min(1)->required(),
+            'posts' => $schema->array()->items($schema->object()->description('date (YYYY-MM-DD), platforms [], format, pillar, title, angle, trend_signal (or null), why_now, asset_brief, caption_brief, fixed_date (true when the post is about that specific day: a holiday, a name day, an event, an opening, an anniversary; it then keeps its date instead of moving to a posting slot; false or absent otherwise), captions {el: {instagram: "...", facebook: "..."}, en: {...}, hashtags: ["#chania"], alt_text: {el: "...", en: "..."}, design: {el: "...", en: "..."}, notes_for_reviewer: "..."}'))->min(1)->required(),
         ];
     }
 }

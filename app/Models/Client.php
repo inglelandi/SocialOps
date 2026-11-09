@@ -162,6 +162,19 @@ class Client extends Model
     }
 
     /**
+     * The time a post tied to a day goes out at (PlanWriter): the slot time of that weekday when the profile has one (the
+     * earliest when several), else the earliest time among all the weekly slots (the client's usual time), else 10:00.
+     */
+    public function usualTime(CarbonInterface $day): string
+    {
+        $slots = collect($this->profile['slots'] ?? [])->map(fn (string $slot) => explode(' ', strtolower($slot)));
+
+        return $slots->where(0, strtolower($day->format('D')))->pluck(1)->sort()->first()
+            ?? $slots->pluck(1)->sort()->first()
+            ?? '10:00';
+    }
+
+    /**
      * The interface language of this client's own pages, mails, review sheet, Word file and plan: the first of its profile
      * languages the app speaks; a client whose languages the app does not speak (German, French…) gets English, not the
      * Greek default (Panos, 2026-11-09). Only a client with no languages at all gets the app default.

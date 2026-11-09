@@ -68,7 +68,7 @@ class GetPlanningBrief extends Tool
             'reference_files' => $reference['files'],
             'caption_rules' => 'For each post write captions per platform and language ('.implode(', ', $languages).') in the voice above, the hook in the first line, placeholders like {{phone}} as written in the profile fields. Limits: '
                 .implode(', ', array_map(fn ($p, $n) => "{$p} {$n}", array_keys(PostRequest::CAPTION_MAX), PostRequest::CAPTION_MAX)).' characters. '.self::hashtagRule($profile['hashtags'] ?? []).' Add alt text per language and the design text (what goes on the graphic or in the video). Greek captions are reviewed by a person; do not publish anything.',
-            'then' => 'Call save-plan with the client, the trend brief you wrote (Markdown) and the posts: date, platforms, format, pillar, title, angle, trend_signal, why_now, asset_brief, caption_brief, captions {'.implode(', ', array_map(fn ($l) => "{$l}: {platform: caption}", $languages)).', hashtags: [], alt_text: {lang: text}, design: {lang: text}, notes_for_reviewer}.',
+            'then' => 'Call save-plan with the client, the trend brief you wrote (Markdown) and the posts: date, platforms, format, pillar, title, angle, trend_signal, why_now, asset_brief, caption_brief, fixed_date (true when the post is about that specific day and must not move), captions {'.implode(', ', array_map(fn ($l) => "{$l}: {platform: caption}", $languages)).', hashtags: [], alt_text: {lang: text}, design: {lang: text}, notes_for_reviewer}.',
         ];
         if ($note = self::referenceNote($client, $reference)) {
             $brief['note'] = $note;
