@@ -5,16 +5,20 @@ on:
     branches: [main]
   pull_request:
 
+# The repository allows only actions pinned to a full commit SHA and made by GitHub, a verified creator or
+# inglelandi (Settings → Actions → General), so PHP comes from the runner image (Ubuntu 24.04: PHP 8.3 and
+# Composer) instead of a setup action. Bump the checkout pin together with last30days-update.yml.
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    env:
+      XDEBUG_MODE: 'off' # installed and on in the image; the tests need no coverage
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          extensions: mbstring, intl, pdo_sqlite, redis
-          coverage: none
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: PHP from the runner image
+        run: |
+          php -v
+          for ext in intl mbstring pdo_sqlite; do php -m | grep -qix "$ext" || { echo "::error::PHP extension $ext is missing on the runner"; exit 1; }; done
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: cp .env.example .env && php artisan key:generate
       - run: vendor/bin/pint --test

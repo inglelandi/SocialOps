@@ -20,12 +20,13 @@ concurrency:
 
 jobs:
   update:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # PHP 8.3 and Composer in the image: only pinned actions by GitHub may run here (see tests.yml)
     env:
       BRANCH: auto/last30days-update
       GH_TOKEN: ${{ github.token }}
+      XDEBUG_MODE: 'off'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Copy the newest skill
         id: copy
@@ -40,16 +41,11 @@ jobs:
           n=$(gh pr list --state closed --search "$SHORT in:title" --json mergedAt --jq '[.[] | select(.mergedAt == null)] | length')
           echo "skip=$([ "${n:-0}" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
-      - uses: shivammathur/setup-php@v2
-        if: steps.copy.outputs.changed == 'true' && steps.closed.outputs.skip != 'true'
-        with:
-          php-version: '8.3'
-          extensions: mbstring, intl, pdo_sqlite, redis
-          coverage: none
-
       - name: Pint and the tests
         if: steps.copy.outputs.changed == 'true' && steps.closed.outputs.skip != 'true'
         run: |
+          php -v
+          for ext in intl mbstring pdo_sqlite; do php -m | grep -qix "$ext" || { echo "::error::PHP extension $ext is missing on the runner"; exit 1; }; done
           composer install --no-interaction --prefer-dist --no-progress
           cp .env.example .env && php artisan key:generate
           vendor/bin/pint --test
