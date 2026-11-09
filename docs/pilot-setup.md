@@ -56,6 +56,8 @@ Lets a client drop photos and videos in a shared Google Drive folder; Social Ops
 
 The same service account reads the reference folders of the **Files** tab (the client's previous posts, menus, briefs: what Claude plans from). Share the agency's parent "Clients" folder with the address once, and every client folder under it is readable: on each client's Files tab paste the client's folder link (or press the button that reuses the photo inbox folder) and **Link**. There the subfolders are read too (six levels, 1000 files at most); Word, Excel, PowerPoint, Google Docs, Sheets and Slides and text files are read as text, and photos, graphics (Illustrator, Photoshop, InDesign, EPS), PDFs and videos are listed as designs, which the hourly Claude worker describes through the connector from Drive's preview, 25 an hour, without anything but its text being kept (D25).
 
+At the top of the Files tab, the **Posts slideshow** is the team's Google Slides file with the posts that will go up for that client (one slide per post with its date and caption, then ideas): share it with the same address (Viewer is enough), or set it to anyone with the link, paste its link and **Link**. It is read at once, every hour and on **Read it now**, and Claude plans around it (D26). A file owned by a colleague's own Google account must be shared by that colleague.
+
 `.env`:
 ```
 GOOGLE_SERVICE_ACCOUNT_JSON=/var/www/vhosts/AGENCY-DOMAIN/socialops-drive.json

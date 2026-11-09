@@ -19,7 +19,7 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Step 1 of planning a batch for a client: the brief you plan from. It holds the brand profile, the pillar quota for the batch, the publishing window with its key dates, holidays and posting slots, the recent posts not to repeat, the client\'s own Drive files (the posts it published before Social Ops, not to repeat, its reference files, as facts, and its past designs as Claude described them from the images), the formats and the caption rules. Research the current trends yourself (the last30days skill or web search), plan the posts, write the captions, then hand everything to save-plan. Nothing is published.')]
+#[Description('Step 1 of planning a batch for a client: the brief you plan from. It holds the brand profile, the pillar quota for the batch, the publishing window with its key dates, holidays and posting slots, the recent posts not to repeat, the client\'s own Drive files (the team\'s posts slideshow with the posts prepared to go up, to plan around and never plan again, the posts it published before Social Ops, not to repeat, its reference files, as facts, and its past designs as Claude described them from the images), the formats and the caption rules. Research the current trends yourself (the last30days skill or web search), plan the posts, write the captions, then hand everything to save-plan. Nothing is published.')]
 class GetPlanningBrief extends Tool
 {
     use ScopedToToken;
@@ -51,6 +51,7 @@ class GetPlanningBrief extends Tool
             'quota' => PillarQuota::line($quota, $plan->instruction),
             'trend_brief' => "Research it yourself before planning (the last30days skill, or web search): what people in {$profile['location']} and the guests of a {$profile['type']} talk about between {$plan->from->toDateString()} and {$plan->to->toDateString()}, the formats and sounds that work now on ".implode(', ', $plan->platforms).', and the moments of the season. Name each signal you use.',
             'recent' => $client->recentTopics(),
+            'upcoming_posts' => $reference['upcoming_posts'],
             'previous_posts' => $reference['previous_posts'],
             'reference' => $reference['reference'],
             'designs' => $reference['designs'],
@@ -66,6 +67,7 @@ class GetPlanningBrief extends Tool
             'formats' => Post::FORMATS,
             'languages' => $languages,
             'prompt' => $prompt,
+            'posts_slideshow' => $reference['slideshow'],
             'reference_folder' => $reference['folder'],
             'reference_files' => $reference['files'],
             'caption_rules' => 'For each post write captions per platform and language ('.implode(', ', $languages).') in the voice above, the hook in the first line, placeholders like {{phone}} as written in the profile fields. Limits: '
@@ -80,15 +82,22 @@ class GetPlanningBrief extends Tool
     }
 
     /**
-     * A folder is linked but gave the brief nothing, or part of it is still waiting: say so, so Claude does not take "none"
-     * for "the client has no files", nor the designs described so far for all of them.
+     * The slideshow or the folder is linked but gave the brief nothing, or part of it is still waiting: say so, so Claude
+     * does not take "none" for "the client has no files", nor the designs described so far for all of them.
      */
     private static function referenceNote(Client $client, array $reference): ?string
     {
-        if ($reference['folder'] === null) {
-            return null;
-        }
         $notes = [];
+        if ($slideshow = $reference['slideshow']) {
+            if ($slideshow['error']) {
+                $notes[] = "The team's posts slideshow \"{$slideshow['name']}\" could not be read: {$slideshow['error']}. Its section above holds what was read before, if anything; say so in notes_for_reviewer.";
+            } elseif ($reference['upcoming_posts'] === '') {
+                $notes[] = "The team's posts slideshow \"{$slideshow['name']}\" is linked but nothing has been read from it yet (the first read is still running, or the file is empty).";
+            }
+        }
+        if ($reference['folder'] === null) {
+            return $notes ? implode(' ', $notes) : null;
+        }
         $error = $client->accounts()->where('platform', 'drive_docs')->first()?->meta['error'] ?? null;
         if ($error) {
             $notes[] = "The client's Drive folder \"{$reference['folder']['name']}\" could not be read: {$error}. The file sections above hold what was read before, if anything.";

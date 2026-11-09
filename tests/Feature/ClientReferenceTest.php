@@ -251,7 +251,7 @@ test('the reference for the planner keeps the newest files within the budgets, l
     $previous = ClientReference::for($this->client)['previous_posts'];
     expect(mb_substr_count($previous, 'Z'))->toBe(500)->and(mb_substr_count($previous, 'B'))->toBe(12000)->and(mb_substr_count($previous, 'A'))->toBe(11500)->and($previous)->toContain('[… cut at 11500 characters]');
 
-    expect(ClientReference::for(Client::factory()->create()))->toBe(['previous_posts' => '', 'reference' => '', 'designs' => '', 'designs_described' => 0, 'designs_waiting' => 0, 'files' => [], 'folder' => null]);
+    expect(ClientReference::for(Client::factory()->create()))->toBe(['upcoming_posts' => '', 'slideshow' => null, 'previous_posts' => '', 'reference' => '', 'designs' => '', 'designs_described' => 0, 'designs_waiting' => 0, 'files' => [], 'folder' => null]);
 });
 
 test('get-planning-brief carries the previous posts and the reference files under their headings, lists the files, and notes a folder with nothing read', function () {

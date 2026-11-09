@@ -43,7 +43,7 @@ class ClientController extends Controller
 
     public function edit(Client $client): View
     {
-        $read = $client->documents()->where('chars', '>', 0)->whereNot('kind', 'design');
+        $read = $client->documents()->where('chars', '>', 0)->whereIn('kind', ['previous_posts', 'reference']);
 
         return view('clients.edit', [
             'client' => $client,
@@ -56,6 +56,7 @@ class ClientController extends Controller
                 'designs' => $client->documents()->where('kind', 'design')->whereNotNull('described_at')->count(),
                 'waiting' => ClaudeQueue::designs()->where('client_id', $client->id)->count(),
             ] : null,
+            'slideshow' => $client->accounts()->where('platform', 'drive_slides')->first(),
         ]);
     }
 

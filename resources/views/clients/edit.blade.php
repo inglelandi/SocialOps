@@ -134,6 +134,9 @@
                                         @else
                                             {{ __('Link the client\'s Drive folder on the Files tab, so Claude reads the previous posts and the reference files.') }}
                                         @endif
+                                        @if ($slideshow)
+                                            {{ __('And the posts slideshow “:name”.', ['name' => $slideshow->name]) }}
+                                        @endif
                                     </a>
                                 </p>
                                 @if ($claudeJobs->isNotEmpty())

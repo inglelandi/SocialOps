@@ -15,7 +15,7 @@ class DraftBatch
 
     /**
      * @param  list<string>  $recent  titles of recent posts, so the planner does not repeat them
-     * @param  array{previous_posts?: string, reference?: string, designs?: string}  $reference  the client's Drive files (ClientReference::for), handed to the planner as they are
+     * @param  array{upcoming_posts?: string, previous_posts?: string, reference?: string, designs?: string}  $reference  the client's Drive files (ClientReference::for), handed to the planner as they are
      */
     public function run(PlanRequest $request, ?string $brief = null, ?callable $progress = null, array $recent = [], array $reference = []): array
     {
