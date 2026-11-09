@@ -1049,5 +1049,6 @@
     "Claude also reads :n files from the client's Drive folder (:m with previous posts).": "Το Claude διαβάζει επίσης :n αρχεία από τον φάκελο Drive του πελάτη (:m με προηγούμενες αναρτήσεις).",
     "Link the client's Drive folder on the Files tab, so Claude reads the previous posts and the reference files.": "Σύνδεσε τον φάκελο Drive του πελάτη στην καρτέλα Αρχεία, για να διαβάζει το Claude τις προηγούμενες αναρτήσεις και τα αρχεία αναφοράς.",
     "Use the photo inbox folder “:name”": "Χρήση του φακέλου φωτογραφιών «:name»",
-    "Documents in this folder (previous posts, menus, briefs) are read on the Files tab.": "Τα έγγραφα αυτού του φακέλου (προηγούμενες αναρτήσεις, μενού, briefs) διαβάζονται στην καρτέλα Αρχεία."
+    "Documents in this folder (previous posts, menus, briefs) are read on the Files tab.": "Τα έγγραφα αυτού του φακέλου (προηγούμενες αναρτήσεις, μενού, briefs) διαβάζονται στην καρτέλα Αρχεία.",
+    "Too big to read: over 25 MB": "Πολύ μεγάλο για ανάγνωση: πάνω από 25 MB"
 }

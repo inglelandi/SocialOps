@@ -70,6 +70,7 @@ class SyncClientDocuments implements ShouldQueue
         try {
             // a Google Doc, Sheet or Slides file comes out as text or CSV: that is the type to read it as
             $native = GoogleDrive::isNative($document->mime);
+            throw_if(! $native && $document->size > DocumentText::MAX_BYTES, new RuntimeException(DocumentText::TOO_BIG));
             $bytes = $native ? $drive->export($document->source_id, $document->mime) : $drive->download($this->account, $document->source_id)->body();
             $text = DocumentText::extract($native ? GoogleDrive::EXPORTS[$document->mime] ?? $document->mime : $document->mime, $bytes, $document->name);
             $document->fill(['text' => $text, 'chars' => mb_strlen($text), 'error' => null]);

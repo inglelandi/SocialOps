@@ -145,6 +145,7 @@ test('the sync reads the folder and its subfolders as text, guesses the kinds, k
                 ['id' => 'gdoc', 'name' => 'Θεματολογία 2026', 'mimeType' => 'application/vnd.google-apps.document', 'modifiedTime' => $round === 1 ? '2026-11-01T10:00:00.000Z' : '2026-11-05T10:00:00.000Z'],
                 ['id' => 'gsheet', 'name' => 'Price list', 'mimeType' => 'application/vnd.google-apps.spreadsheet', 'modifiedTime' => '2026-11-02T10:00:00.000Z'],
                 ['id' => 'docx1', 'name' => 'Brief.docx', 'mimeType' => $docx, 'modifiedTime' => '2026-10-20T10:00:00.000Z', 'size' => '12345'],
+                ['id' => 'huge', 'name' => 'Photo archive.xlsx', 'mimeType' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'modifiedTime' => '2026-10-22T10:00:00.000Z', 'size' => (string) (40 * 1024 * 1024)],
                 ['id' => 'photo', 'name' => 'pool.jpg', 'mimeType' => 'image/jpeg', 'modifiedTime' => '2026-10-20T10:00:00.000Z', 'size' => '999'],
                 ['id' => 'clip', 'name' => 'sunset.mp4', 'mimeType' => 'video/mp4', 'modifiedTime' => '2026-10-20T10:00:00.000Z', 'size' => '999'],
                 ['id' => 'short', 'name' => 'Shortcut to menu', 'mimeType' => 'application/vnd.google-apps.shortcut', 'shortcutDetails' => ['targetId' => 'x']],
@@ -166,7 +167,8 @@ test('the sync reads the folder and its subfolders as text, guesses the kinds, k
     (new SyncClientDocuments($folder))->handle(app(GoogleDrive::class));
 
     $documents = $folder->documents()->orderBy('source_id')->get()->keyBy('source_id');
-    expect($documents->keys()->all())->toBe(['docx1', 'gdoc', 'gsheet', 'old1', 'pdf1'])
+    expect($documents->keys()->all())->toBe(['docx1', 'gdoc', 'gsheet', 'huge', 'old1', 'pdf1'])
+        ->and($documents['huge'])->toMatchArray(['text' => null, 'chars' => 0, 'error' => DocumentText::TOO_BIG]) // never downloaded: 40 MB would be read whole in memory
         ->and($documents['gdoc'])->toMatchArray(['name' => 'Θεματολογία 2026', 'path' => '', 'kind' => 'previous_posts', 'kind_set_by_user' => false, 'text' => "Post 1\nPost 2", 'chars' => 13, 'error' => null, 'size' => null])
         ->and($documents['gdoc']->modified_at->utc()->toDateTimeString())->toBe('2026-11-01 10:00:00')
         ->and($documents['gsheet'])->toMatchArray(['kind' => 'reference', 'text' => "Item,Price\nMojito,9", 'chars' => 19])
@@ -174,12 +176,12 @@ test('the sync reads the folder and its subfolders as text, guesses the kinds, k
         ->and($documents['old1'])->toMatchArray(['name' => 'Αναρτήσεις 2025.docx', 'path' => 'Παλιά', 'kind' => 'previous_posts', 'text' => 'Καλοκαίρι 2025: cocktails στο ηλιοβασίλεμα'])
         ->and($documents['pdf1'])->toMatchArray(['kind' => 'reference', 'text' => null, 'chars' => 0, 'error' => DocumentText::PDF])
         ->and($documents['pdf1']->fetched_at)->not->toBeNull()
-        ->and($folder->fresh()->meta)->toMatchArray(['folder' => 'root1', 'file_count' => 5, 'error' => null])
+        ->and($folder->fresh()->meta)->toMatchArray(['folder' => 'root1', 'file_count' => 6, 'error' => null])
         ->and($folder->fresh()->meta['synced_at'])->not->toBeNull();
     Http::assertSent(fn (Request $request) => str_contains(urldecode($request->url()), "q='root1' in parents and trashed = false") && str_contains($request->url(), 'fields=nextPageToken%2Cfiles%28id%2Cname%2CmimeType%2CmodifiedTime%2Csize%2CshortcutDetails%29') && str_contains($request->url(), 'supportsAllDrives=true') && str_contains($request->url(), 'includeItemsFromAllDrives=true'));
     Http::assertSent(fn (Request $request) => str_contains($request->url(), '/files/gdoc/export?mimeType=text%2Fplain'));
     Http::assertSent(fn (Request $request) => str_contains($request->url(), '/files/gsheet/export?mimeType=text%2Fcsv'));
-    Http::assertNotSent(fn (Request $request) => str_contains($request->url(), '/files/photo') || str_contains($request->url(), '/files/clip') || str_contains($request->url(), '/files/short') || str_contains($request->url(), '/files/form'));
+    Http::assertNotSent(fn (Request $request) => str_contains($request->url(), '/files/photo') || str_contains($request->url(), '/files/clip') || str_contains($request->url(), '/files/short') || str_contains($request->url(), '/files/form') || str_contains($request->url(), '/files/huge'));
 
     // the team marks the price list "not used"; on the next read the Doc changed, the Word file did not, the PDF is gone
     $documents['gsheet']->update(['kind' => 'ignored', 'kind_set_by_user' => true]);
@@ -187,16 +189,16 @@ test('the sync reads the folder and its subfolders as text, guesses the kinds, k
     (new SyncClientDocuments($folder))->handle(app(GoogleDrive::class));
 
     $documents = $folder->documents()->orderBy('source_id')->get()->keyBy('source_id');
-    expect($documents->keys()->all())->toBe(['docx1', 'gdoc', 'gsheet', 'old1'])
+    expect($documents->keys()->all())->toBe(['docx1', 'gdoc', 'gsheet', 'huge', 'old1'])
         ->and($documents['gdoc']->text)->toBe("Post 1\nPost 2\nPost 3")
         ->and($documents['gsheet']->kind)->toBe('ignored')
-        ->and($folder->fresh()->meta['file_count'])->toBe(4)
+        ->and($folder->fresh()->meta['file_count'])->toBe(5)
         ->and(Http::recorded(fn (Request $request) => str_contains($request->url(), '/files/docx1?alt=media'))->count())->toBe(1)
         ->and(Http::recorded(fn (Request $request) => str_contains($request->url(), '/files/gdoc/export'))->count())->toBe(2);
 
     // the Files tab shows it all: previous posts first, then reference, then not used
     $html = $this->actingAs($this->user)->get(route('clients.files', $this->client))->assertOk()->getContent();
-    expect($html)->toContain('Last read '.now()->format('d-m-Y'))->toContain(', 4 files')->toContain('Google Sheets: only the first sheet is read.')->toContain('Παλιά</p>')
+    expect($html)->toContain('Last read '.now()->format('d-m-Y'))->toContain(', 5 files')->toContain('Too big to read: over 25 MB')->toContain('Google Sheets: only the first sheet is read.')->toContain('Παλιά</p>')
         ->and(strpos($html, 'Θεματολογία 2026'))->toBeLessThan(strpos($html, 'Brief.docx'))
         ->and(strpos($html, 'Brief.docx'))->toBeLessThan(strpos($html, 'Price list'));
 });

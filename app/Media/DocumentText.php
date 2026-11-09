@@ -20,7 +20,12 @@ final class DocumentText
 
     public const UNREADABLE = 'This file type is not read';
 
-    public const REASONS = [self::PDF, self::OLD_OFFICE, self::UNREADABLE];
+    public const TOO_BIG = 'Too big to read: over 25 MB';
+
+    /** A file is read whole in memory before its text comes out, so the queue worker never takes one over this size. */
+    public const MAX_BYTES = 25 * 1024 * 1024;
+
+    public const REASONS = [self::PDF, self::OLD_OFFICE, self::UNREADABLE, self::TOO_BIG];
 
     private const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
