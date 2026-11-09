@@ -7,7 +7,7 @@
     @php($noReports = __('No reports yet. "Monthly report" above writes the first one from last month\'s numbers; "Plan with Claude" on the client page files its trend brief and content plan here.'))
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <x-section :title="__('Reports')" :description="$about" flush class="text-sm">
+            <x-section icon="chart-bar" :title="__('Reports')" :description="$about" flush class="text-sm">
                 @if (session('status') === 'report-queued')
                     <p class="px-6 py-3 text-green-600">{{ __('Report queued. It appears below in a few minutes.') }}</p>
                 @endif
@@ -19,13 +19,13 @@
                             <x-input-label for="month" :value="__('Month')" />
                             <x-text-input id="month" name="month" type="month" max="{{ now()->subMonth()->format('Y-m') }}" class="mt-1 block" :value="old('month', now()->subMonth()->format('Y-m'))" />
                         </div>
-                        <x-primary-button>{{ __('Monthly report') }}</x-primary-button>
+                        <x-primary-button><x-icon name="chart-bar" class="h-4 w-4" />{{ __('Monthly report') }}</x-primary-button>
                         <x-input-error :messages="$errors->get('month')" />
                     </form>
                     @if (\App\Reporting\ListeningReport::watches($client))
                         <form method="POST" action="{{ route('reports.listening', $client) }}">
                             @csrf
-                            <x-secondary-button type="submit">{{ __('Listening report now') }}</x-secondary-button>
+                            <x-secondary-button type="submit"><x-icon name="megaphone" class="h-4 w-4" />{{ __('Listening report now') }}</x-secondary-button>
                             <span class="ml-2 text-gray-600">{{ __('Runs every Monday for the hashtags and competitors in the profile.') }}</span>
                         </form>
                     @else
@@ -43,7 +43,7 @@
                                 <td class="px-6 py-2.5"><a href="{{ route('reports.show', $report) }}" class="font-medium text-gray-900 hover:text-brand-600">{{ $report->title }}</a></td>
                             </tr>
                         @empty
-                            <tr><td colspan="3" class="px-6 py-4"><x-empty-state :action="__('Plan with Claude')" :href="route('clients.edit', $client)">{{ $noReports }}</x-empty-state></td></tr>
+                            <tr><td colspan="3" class="px-6 py-4"><x-empty-state icon="chart-bar" :action="__('Plan with Claude')" :href="route('clients.edit', $client)">{{ $noReports }}</x-empty-state></td></tr>
                         @endforelse
                     </tbody>
                 </table>

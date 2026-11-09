@@ -6,7 +6,7 @@
             <input type="hidden" name="state" value="{{ $request->state }}">
             <input type="hidden" name="client_id" value="{{ $client->getKey() }}">
             <input type="hidden" name="auth_token" value="{{ $authToken }}">
-            <x-primary-button>{{ __('Allow') }}</x-primary-button>
+            <x-primary-button><x-icon name="shield-check" class="h-4 w-4" />{{ __('Allow') }}</x-primary-button>
         </form>
         <form method="POST" action="{{ route('passport.authorizations.deny') }}">
             @csrf
@@ -14,7 +14,7 @@
             <input type="hidden" name="state" value="{{ $request->state }}">
             <input type="hidden" name="client_id" value="{{ $client->getKey() }}">
             <input type="hidden" name="auth_token" value="{{ $authToken }}">
-            <x-secondary-button type="submit">{{ __('Cancel') }}</x-secondary-button>
+            <x-secondary-button type="submit"><x-icon name="x-mark" class="h-4 w-4" />{{ __('Cancel') }}</x-secondary-button>
         </form>
     </div>
 </x-guest-layout>

@@ -7,7 +7,7 @@
         <x-slot name="actions">
             <form method="POST" action="{{ route('bin.restore-all', $client) }}">
                 @csrf
-                <x-secondary-button type="submit">{{ __('Restore all') }}</x-secondary-button>
+                <x-secondary-button type="submit"><x-icon name="arrow-uturn-left" class="h-4 w-4" />{{ __('Restore all') }}</x-secondary-button>
             </form>
             <form method="POST" action="{{ route('bin.empty', $client) }}" class="ml-auto" onsubmit="return confirm('{{ __('Delete every post in the recycle bin for good? This cannot be undone.') }}')">
                 @csrf
@@ -29,9 +29,9 @@
             @endif
 
             @if ($posts->isEmpty())
-                <x-empty-state class="bg-white">{{ __('The recycle bin is empty. A deleted post of this client waits here until someone restores it or deletes it for good.') }}</x-empty-state>
+                <x-empty-state icon="trash" class="bg-white">{{ __('The recycle bin is empty. A deleted post of this client waits here until someone restores it or deletes it for good.') }}</x-empty-state>
             @else
-                <x-section :title="__('Deleted posts')" :description="__('A deleted post waits here with its captions, media and notes. Restore puts it back on the calendar as it was. Nothing is emptied on its own.')" flush>
+                <x-section icon="trash" :title="__('Deleted posts')" :description="__('A deleted post waits here with its captions, media and notes. Restore puts it back on the calendar as it was. Nothing is emptied on its own.')" flush>
                     <ul class="divide-y divide-gray-200 text-sm">
                         @foreach ($posts as $post)
                             {{-- what the post is and when it was deleted, then the two buttons: side by side, stacked on a phone --}}
@@ -59,12 +59,12 @@
                                     <span class="hidden grow sm:block"></span>{{-- pushes the buttons to the right edge on a wide screen --}}
                                     <form method="POST" action="{{ route('posts.restore', $post) }}">
                                         @csrf
-                                        <x-secondary-button type="submit">{{ __('Restore') }}</x-secondary-button>
+                                        <x-secondary-button type="submit"><x-icon name="arrow-uturn-left" class="h-4 w-4" />{{ __('Restore') }}</x-secondary-button>
                                     </form>
                                     <form method="POST" action="{{ route('posts.forget', $post) }}" onsubmit="return confirm('{{ __('Delete this post for good? This cannot be undone.') }}')">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="text-xs text-red-600 hover:underline">{{ __('Delete for good') }}</button>
+                                        <button type="submit" class="inline-flex items-center gap-1 text-xs text-red-600 hover:underline"><x-icon name="trash" class="h-4 w-4" />{{ __('Delete for good') }}</button>
                                     </form>
                                 </div>
                             </li>

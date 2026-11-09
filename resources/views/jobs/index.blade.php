@@ -8,10 +8,10 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 text-sm">
             @if (session('status'))
-                <p class="text-green-600">{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
+                <p class="flex items-center gap-1.5 text-green-600"><x-icon name="check-circle" class="h-5 w-5" />{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
             @endif
 
-            <x-section :title="__('Waiting for Claude')" :description="__('What the team asked Claude for. The scheduled task picks it up once an hour.')" flush class="overflow-x-auto">
+            <x-section icon="sparkles" :title="__('Waiting for Claude')" :description="__('What the team asked Claude for. The scheduled task picks it up once an hour.')" flush class="overflow-x-auto">
                 <table class="w-full">
                     <thead class="text-left text-xs uppercase tracking-wide text-gray-600"><tr><th class="{{ $th }}">{{ __('Request') }}</th><th class="{{ $th }}">{{ __('Client') }}</th><th class="{{ $th }}">{{ __('Queued') }}</th><th></th></tr></thead>
                     <tbody class="divide-y divide-gray-200">
@@ -46,7 +46,7 @@
                 </table>
             </x-section>
 
-            <x-section :title="__('Waiting')" :description="__('Publishing and planning run on the queue, which the per-minute scheduled task works through.')" flush>
+            <x-section icon="clock" :title="__('Waiting')" :description="__('Publishing and planning run on the queue, which the per-minute scheduled task works through.')" flush>
                 <table class="w-full">
                     <thead class="text-left text-xs uppercase tracking-wide text-gray-600"><tr><th class="{{ $th }}">{{ __('Job') }}</th><th class="{{ $th }}">{{ __('Attempts') }}</th><th class="{{ $th }}">{{ __('Due') }}</th></tr></thead>
                     <tbody class="divide-y divide-gray-200">
@@ -59,7 +59,7 @@
                 </table>
             </x-section>
 
-            <x-section :title="__('Failed')" flush>
+            <x-section icon="exclamation-triangle" :title="__('Failed')" flush>
                 <table class="w-full">
                     <thead class="text-left text-xs uppercase tracking-wide text-gray-600"><tr><th class="{{ $th }}">{{ __('Job') }}</th><th class="{{ $th }}">{{ __('Error') }}</th><th class="{{ $th }}">{{ __('Failed at') }}</th><th></th></tr></thead>
                     <tbody class="divide-y divide-gray-200">
@@ -81,7 +81,7 @@
             </x-section>
 
             @php($priced = \App\Models\ClaudeCall::cost(1, 1) !== null)
-            <x-section :title="__('Claude, last 30 days')" :description="$priced ? null : __('Set ANTHROPIC_PRICE_INPUT and ANTHROPIC_PRICE_OUTPUT (USD per million tokens) in .env to see the cost column.')" flush>
+            <x-section icon="cpu-chip" :title="__('Claude, last 30 days')" :description="$priced ? null : __('Set ANTHROPIC_PRICE_INPUT and ANTHROPIC_PRICE_OUTPUT (USD per million tokens) in .env to see the cost column.')" flush>
                 <table class="w-full">
                     <thead class="text-left text-xs uppercase tracking-wide text-gray-600"><tr><th class="{{ $th }}">{{ __('Client') }}</th><th class="{{ $th }}">{{ __('Purpose') }}</th><th class="{{ $th }} text-right">{{ __('Calls') }}</th><th class="{{ $th }} text-right">{{ __('Tokens in') }}</th><th class="{{ $th }} text-right">{{ __('Tokens out') }}</th>@if ($priced)<th class="{{ $th }} text-right">{{ __('USD') }}</th>@endif</tr></thead>
                     <tbody class="divide-y divide-gray-200">

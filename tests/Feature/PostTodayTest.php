@@ -72,7 +72,7 @@ test('a limited login sees only its own clients on the page and in the navigatio
     $html = $this->actingAs($limited)->get(route('today'))->assertOk()->getContent();
     expect(cards($html))->toBe([$mine->id])->and($html)->not->toContain($theirs->name);
     expect(cards($this->actingAs($limited)->get(route('today', ['client' => 'blue-villas']))->getContent()))->toBe([$mine->id]); // another client's slug is ignored
-    expect($this->actingAs($limited)->get(route('dashboard'))->getContent())->toMatch('~'.preg_quote(route('today'), '~').'"[^>]*>\s*Post today<span[^>]*>1</span>~');
+    expect($this->actingAs($limited)->get(route('dashboard'))->getContent())->toMatch('~'.preg_quote(route('today'), '~').'"[^>]*>\s*(<svg[^>]*>.*?</svg>\s*)?Post today<span[^>]*>1</span>~s'); // the link's icon, then its text and count
 
     $this->actingAs($limited)->post(route('posts.transition', $theirs), ['state' => 'published', 'return' => route('today')])->assertForbidden();
     expect($theirs->fresh()->state)->toBe(PostState::Scheduled);

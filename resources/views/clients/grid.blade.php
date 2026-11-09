@@ -9,7 +9,7 @@
     <div class="py-6">
         <div class="max-w-md mx-auto px-4">
             @if ($posts->isEmpty())
-                <x-empty-state class="mb-4 bg-white" :action="__('New post')" :href="route('posts.create', $client)">{{ __('No Instagram feed posts with a date yet. Feed, carousel and Reel posts show here as the grid will look, newest first.') }}</x-empty-state>
+                <x-empty-state icon="squares-2x2" action-icon="plus" class="mb-4 bg-white" :action="__('New post')" :href="route('posts.create', $client)">{{ __('No Instagram feed posts with a date yet. Feed, carousel and Reel posts show here as the grid will look, newest first.') }}</x-empty-state>
             @endif
             <div class="grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-gray-300 bg-gray-200">
                 @foreach ($posts as $post)

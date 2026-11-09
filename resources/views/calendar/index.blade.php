@@ -14,9 +14,9 @@
                 <div class="flex flex-wrap items-center gap-2">
                     @if ($clientUrl)
                         {{-- the view-only calendar for the client: one click copies it (or shows it to copy by hand where the browser refuses) --}}
-                        <button type="button" x-data="{ copied: false }" data-url="{{ $clientUrl }}" x-on:click="navigator.clipboard.writeText($el.dataset.url).then(() => { copied = true; setTimeout(() => copied = false, 2000) }).catch(() => prompt('', $el.dataset.url))" title="{{ __('View-only link for the client (no login, valid :days days, this month and the next)', ['days' => \App\Http\Controllers\CalendarController::LINK_DAYS]) }}" class="inline-flex items-center rounded-lg border border-gray-400 bg-white px-3.5 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50"><span x-text="copied ? '{{ __('Copied') }}' : '{{ __('Copy link for the client') }}'">{{ __('Copy link for the client') }}</span></button>
+                        <button type="button" x-data="{ copied: false }" data-url="{{ $clientUrl }}" x-on:click="navigator.clipboard.writeText($el.dataset.url).then(() => { copied = true; setTimeout(() => copied = false, 2000) }).catch(() => prompt('', $el.dataset.url))" title="{{ __('View-only link for the client (no login, valid :days days, this month and the next)', ['days' => \App\Http\Controllers\CalendarController::LINK_DAYS]) }}" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-400 bg-white px-3.5 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50"><x-icon name="link" class="h-4 w-4" /><span x-text="copied ? '{{ __('Copied') }}' : '{{ __('Copy link for the client') }}'">{{ __('Copy link for the client') }}</span></button>
                     @endif
-                    <a class="inline-flex items-center rounded-lg border border-gray-400 bg-white px-3.5 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50" href="{{ route('posts.csv', [$clients->firstWhere('slug', $clientSlug), 'view' => $view, ...$when]) }}" title="{{ __('The posts shown, one row per platform, for Canva Bulk Create or a spreadsheet') }}">{{ __('Export CSV') }}</a>
+                    <a class="inline-flex items-center gap-1.5 rounded-lg border border-gray-400 bg-white px-3.5 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50" href="{{ route('posts.csv', [$clients->firstWhere('slug', $clientSlug), 'view' => $view, ...$when]) }}" title="{{ __('The posts shown, one row per platform, for Canva Bulk Create or a spreadsheet') }}"><x-icon name="table-cells" class="h-4 w-4" />{{ __('Export CSV') }}</a>
                 </div>
             @else
                 <button type="button" data-new-post="" class="inline-flex items-center rounded-lg bg-brand-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-600">{{ __('New post') }}</button>
@@ -27,7 +27,7 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
             @if (session('status'))
-                <p class="text-sm text-green-600">{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
+                <p class="flex items-center gap-1.5 text-sm text-green-600"><x-icon name="check-circle" class="h-5 w-5" />{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
             @endif
             @error('state') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
 
@@ -37,7 +37,7 @@
                 <a class="{{ $btn }}" href="{{ route('calendar', [...$span, 'view' => $view, ...$move(1)]) }}" aria-label="{{ __('Next') }}">&rarr;</a>
                 <span class="ml-1 inline-flex rounded-lg bg-gray-100 p-0.5">
                     @foreach (['month' => __('Month'), 'week' => __('Week'), 'list' => __('List')] as $one => $label)
-                        <a class="rounded-md px-3 py-1 {{ $view === $one ? 'bg-white font-medium text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}" href="{{ route('calendar', [...$span, 'view' => $one]) }}">{{ $label }}</a>
+                        <a class="inline-flex items-center gap-1.5 rounded-md px-3 py-1 {{ $view === $one ? 'bg-white font-medium text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}" href="{{ route('calendar', [...$span, 'view' => $one]) }}"><x-icon :name="['month' => 'calendar-days', 'week' => 'calendar', 'list' => 'list-bullet'][$one]" class="h-4 w-4" />{{ $label }}</a>
                     @endforeach
                 </span>
                 {{-- the everyday filters stay in view; the date range, platform and pillar wait behind "More filters" and open by themselves when one is in use --}}
@@ -56,7 +56,7 @@
                             <option value="{{ $state->value }}" @selected(($filters['state'] ?? '') === $state->value)>{{ __($state->label()) }}</option>
                         @endforeach
                     </select>
-                    <button type="button" x-on:click="more = ! more" x-show="! more" class="rounded-md px-2 py-1.5 font-medium text-gray-900 underline decoration-gray-400 underline-offset-4 hover:text-brand-600">{{ __('More filters') }}</button>
+                    <button type="button" x-on:click="more = ! more" x-show="! more" class="inline-flex items-center gap-1 rounded-md px-2 py-1.5 font-medium text-gray-900 underline decoration-gray-400 underline-offset-4 hover:text-brand-600"><x-icon name="funnel" class="h-4 w-4" />{{ __('More filters') }}</button>
                     <span x-show="more" x-cloak class="contents">
                     <label class="text-gray-600">{{ __('From') }} <input type="date" name="from" value="{{ $range ? $range[0]->toDateString() : '' }}" onchange="this.form.to.value && this.form.submit()" class="{{ $input }}"></label>
                     <label class="text-gray-600">{{ __('To') }} <input type="date" name="to" value="{{ $range ? $range[1]->toDateString() : '' }}" onchange="this.form.from.value && this.form.submit()" class="{{ $input }}"></label>

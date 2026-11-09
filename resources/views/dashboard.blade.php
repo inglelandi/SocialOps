@@ -11,12 +11,12 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 text-sm">
             @if (session('status'))
-                <p class="text-green-600">{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
+                <p class="flex items-center gap-1.5 text-green-600"><x-icon name="check-circle" class="h-5 w-5" />{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
             @endif
             @if ($clients->isEmpty())
-                <x-empty-state class="bg-white" :action="__('Add the first client')" :href="auth()->user()->can('add-clients') ? route('clients.create') : null">{{ __('No clients yet. A client profile holds the accounts, the voice, the pillars and the approvers; everything else hangs off it.') }}</x-empty-state>
+                <x-empty-state icon="building-storefront" action-icon="plus" class="bg-white" :action="__('Add the first client')" :href="auth()->user()->can('add-clients') ? route('clients.create') : null">{{ __('No clients yet. A client profile holds the accounts, the voice, the pillars and the approvers; everything else hangs off it.') }}</x-empty-state>
             @elseif ($quiet)
-                <x-empty-state class="bg-white" :action="__('Open the calendar')" :href="route('calendar')">{{ __('Nothing needs you right now.') }}</x-empty-state>
+                <x-empty-state icon="check-circle" action-icon="calendar-days" class="bg-white" :action="__('Open the calendar')" :href="route('calendar')">{{ __('Nothing needs you right now.') }}</x-empty-state>
             @endif
 
             @if ($lateClaude)
@@ -26,7 +26,7 @@
             <div class="grid gap-4 lg:grid-cols-2 lg:items-start">
                 <div class="space-y-4">
                     @if ($today->isNotEmpty() || $tomorrow->isNotEmpty())
-                        <x-section :title="__('Going out')" flush>
+                        <x-section icon="paper-airplane" :title="__('Going out')" flush>
                             <ul class="divide-y divide-gray-200">
                                 @foreach ([__('Today') => $today, __('Tomorrow') => $tomorrow] as $label => $posts)
                                     @if ($posts->isNotEmpty())
@@ -44,7 +44,7 @@
                     @endif
 
                     @if ($drafts->isNotEmpty())
-                        <x-section :title="__('Due within 7 days, not sent for approval yet')" flush>
+                        <x-section icon="clock" :title="__('Due within 7 days, not sent for approval yet')" flush>
                             <ul class="divide-y divide-gray-200">
                                 @foreach ($drafts as $post)
                                     <li class="{{ $item }}"><span class="{{ $when }}">{{ $post->scheduled_at->translatedFormat('D d-m-Y H:i') }}</span> <span class="flex-1">{!! $line($post) !!} <x-state-badge :state="$post->state" /></span></li>
@@ -54,7 +54,7 @@
                     @endif
 
                     @if ($stuck->isNotEmpty())
-                        <x-section :title="__('Failed or waiting for a human')" flush>
+                        <x-section icon="exclamation-triangle" :title="__('Failed or waiting for a human')" flush>
                             <ul class="divide-y divide-gray-200">
                                 @foreach ($stuck as $post)
                                     <li class="{{ $item }}"><a class="font-medium text-gray-900 hover:text-brand-600" href="{{ route('posts.edit', $post) }}">{{ $post->name }}</a> <x-state-badge :state="$post->state" /> <span class="text-red-600">{{ Str::limit($post->publish_error, 120) }}</span></li>
@@ -64,7 +64,7 @@
                     @endif
 
                     @if ($drift->isNotEmpty())
-                        <x-section :title="__('Pillar mix off target')" :description="__('Share of posts per pillar, :days days back and ahead, against the profile.', ['days' => \App\Planning\PillarMix::DAYS])" flush>
+                        <x-section icon="chart-pie" :title="__('Pillar mix off target')" :description="__('Share of posts per pillar, :days days back and ahead, against the profile.', ['days' => \App\Planning\PillarMix::DAYS])" flush>
                             <ul class="divide-y divide-gray-200">
                                 @foreach ($drift as $row)
                                     <li class="{{ $item }}"><a class="font-medium text-gray-900 hover:text-brand-600" href="{{ route('clients.edit', $row['client']) }}">{{ $row['client']->name }}</a>
@@ -78,7 +78,7 @@
 
                 <div class="space-y-4">
                     @if ($deadlines->isNotEmpty())
-                        <x-section :title="__('Deadlines in the next 7 days')" flush>
+                        <x-section icon="flag" :title="__('Deadlines in the next 7 days')" flush>
                             <ul class="divide-y divide-gray-200">
                                 @foreach ($deadlines as $deadline)
                                     <li class="{{ $item }}"><span class="{{ $deadline->due_on->lt(today()) ? $flag : $when }}">{{ $deadline->due_on->translatedFormat('D d-m-Y') }}</span>
@@ -91,7 +91,7 @@
                     @endif
 
                     @if ($waiting->isNotEmpty())
-                        <x-section :title="__('Waiting for the client')" flush>
+                        <x-section icon="check-badge" :title="__('Waiting for the client')" flush>
                             <ul class="divide-y divide-gray-200">
                                 @foreach ($waiting as $review)
                                     <li class="{{ $item }}"><span class="flex-1"><a class="font-medium text-gray-900 hover:text-brand-600" href="{{ route('clients.reviews', $review->client) }}">{{ $review->client->name }}</a> <span class="text-gray-600">· {{ $review->pending_count }} {{ __('posts waiting') }}</span></span>
@@ -103,7 +103,7 @@
                     @endif
 
                     @if ($unanswered->isNotEmpty())
-                        <x-section :title="__('Comments without a reply')" flush>
+                        <x-section icon="chat-bubble-left-right" :title="__('Comments without a reply')" flush>
                             <ul class="divide-y divide-gray-200">
                                 @foreach ($unanswered as $row)
                                     <li class="{{ $item }}"><a class="font-medium text-gray-900 hover:text-brand-600" href="{{ route('clients.comments', $row->client) }}">{{ $row->client->name }}</a> · {{ $row->n }}</li>
@@ -113,7 +113,7 @@
                     @endif
 
                     @if ($tokens->isNotEmpty())
-                        <x-section :title="__('Tokens expiring')" flush>
+                        <x-section icon="key" :title="__('Tokens expiring')" flush>
                             <ul class="divide-y divide-gray-200">
                                 @foreach ($tokens as $account)
                                     <li class="{{ $item }}"><a class="font-medium text-gray-900 hover:text-brand-600" href="{{ route('clients.accounts', $account->client) }}">{{ $account->client->name }} {{ $account->platform }}</a> <span class="text-gray-600">· {{ $account->token_expires_at->isPast() ? __('expired') : __('expires').' '.$account->token_expires_at->diffForHumans() }}</span></li>
@@ -123,13 +123,13 @@
                     @endif
 
                     @if ($failedJobs)
-                        <p class="rounded-xl border border-gray-300 bg-white px-6 py-4"><a class="font-medium text-gray-900 hover:text-brand-600" href="{{ route('jobs.index') }}">{{ $failedJobs }} {{ __('failed jobs') }}</a></p>
+                        <p class="rounded-xl border border-gray-300 bg-white px-6 py-4"><a class="inline-flex items-center gap-2 font-medium text-gray-900 hover:text-brand-600" href="{{ route('jobs.index') }}"><x-icon name="exclamation-triangle" class="h-5 w-5 text-red-600" />{{ $failedJobs }} {{ __('failed jobs') }}</a></p>
                     @endif
                 </div>
             </div>
 
             @if ($clients->isNotEmpty())
-                <x-section :title="__('Per client, the next 7 days')" flush class="overflow-x-auto">
+                <x-section icon="calendar-days" :title="__('Per client, the next 7 days')" flush class="overflow-x-auto">
                     <table class="w-full text-left">
                         <thead class="text-xs uppercase tracking-wide text-gray-600">
                             <tr><th class="px-6 py-2 font-medium">{{ __('Client') }}</th><th class="px-6 py-2 font-medium">{{ __('Going out') }}</th><th class="px-6 py-2 font-medium">{{ __('Waiting for client') }}</th><th class="px-6 py-2 font-medium">{{ __('Not sent yet') }}</th>@if (config('features.publishing'))<th class="px-6 py-2 font-medium">{{ __('Failed') }}</th><th class="px-6 py-2 font-medium">{{ __('Comments to answer') }}</th>@endif</tr>

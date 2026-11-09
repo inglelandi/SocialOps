@@ -16,7 +16,7 @@
     </div>
 @endif
 
-<x-section x-show="tab === 'basics'" :title="__('Basics')" :description="__('Who the client is, the accounts and the caption languages.')">
+<x-section icon="building-storefront" x-show="tab === 'basics'" :title="__('Basics')" :description="__('Who the client is, the accounts and the caption languages.')">
     <x-field :label="__('Name')" for="name">
         <x-text-input id="name" name="name" type="text" class="block w-full text-sm" :value="old('name', $client->name)" required />
     </x-field>
@@ -65,7 +65,7 @@
     </x-field>
 </x-section>
 
-<x-section x-show="tab === 'about'" x-cloak :title="__('About the client')" :description="__('What Claude plans and writes from. Every price, dish, service and event in a post comes from here or from the facts under Voice, so the more there is, the more accurate the posts.')">
+<x-section icon="information-circle" x-show="tab === 'about'" x-cloak :title="__('About the client')" :description="__('What Claude plans and writes from. Every price, dish, service and event in a post comes from here or from the facts under Voice, so the more there is, the more accurate the posts.')">
     <x-field :label="__('What it is')" for="p-about-description" :help="__('The place in a few sentences: what it is, where, since when, who runs it.')">
         <textarea id="p-about-description" name="p[about][description]" rows="4" class="{{ $input }}">{{ $p('about.description') }}</textarea>
     </x-field>
@@ -86,7 +86,7 @@
     </x-field>
 </x-section>
 
-<x-section x-show="tab === 'agency'" x-cloak :title="__('Agency')" :description="__('How the team tracks this client on the Clients board. The client never sees these.')">
+<x-section icon="briefcase" x-show="tab === 'agency'" x-cloak :title="__('Agency')" :description="__('How the team tracks this client on the Clients board. The client never sees these.')">
     <x-field :label="__('Status and person')" for="status">
         <div class="grid gap-3 sm:grid-cols-2">
             <select id="status" name="status" class="{{ $input }}">
@@ -125,7 +125,7 @@
     </x-field>
 </x-section>
 
-<x-section x-show="tab === 'voice'" x-cloak :title="__('Voice')" :description="__('How the captions sound. Claude follows this on every post, reply and report.')">
+<x-section icon="microphone" x-show="tab === 'voice'" x-cloak :title="__('Voice')" :description="__('How the captions sound. Claude follows this on every post, reply and report.')">
     <x-field :label="__('Tone')" for="p-tone">
         <x-text-input id="p-tone" name="p[voice][tone]" type="text" class="block w-full text-sm" :value="$p('voice.tone')" placeholder="{{ __('relaxed, warm, confident; premium without sounding formal') }}" required />
     </x-field>
@@ -152,7 +152,7 @@
     </x-field>
 </x-section>
 
-<x-section x-show="tab === 'content'" x-cloak :title="__('Content')" :description="__('The topics the posts rotate through, the hashtags and the text added to every post.')">
+<x-section icon="squares-plus" x-show="tab === 'content'" x-cloak :title="__('Content')" :description="__('The topics the posts rotate through, the hashtags and the text added to every post.')">
     <x-field :label="__('Content pillars')" :help="__('The share of posts each topic gets; the shares add up to 100. Optional: without pillars Claude picks the topics from About the client, the season and the trends.')">
         @php($pillars = old('p.pillars', collect($profile['pillars'] ?? [])->map(fn ($share, $name) => ['name' => str_replace('_', ' ', $name), 'share' => $share])->values()->all()))
         <div class="grid gap-2 sm:grid-cols-2">
@@ -209,7 +209,7 @@
     </x-field>
 </x-section>
 
-<x-section x-show="tab === 'approval'" x-cloak :title="__('Approval')" :description="__('Who approves the posts and how long the client has to answer.')">
+<x-section icon="check-badge" x-show="tab === 'approval'" x-cloak :title="__('Approval')" :description="__('Who approves the posts and how long the client has to answer.')">
     <x-field :label="__('Policy')" for="p-policy" :help="__('The hours are how long the client has to answer before a reminder.')">
         <div class="flex gap-2">
             <select id="p-policy" name="p[approval][policy]" class="{{ $input }}">
@@ -233,7 +233,7 @@
     </x-field>
 </x-section>
 
-<x-section x-show="tab === 'timing'" x-cloak :title="__('Timing')" :description="__('When the posts go out and the dates the plan should build around.')">
+<x-section icon="clock" x-show="tab === 'timing'" x-cloak :title="__('Timing')" :description="__('When the posts go out and the dates the plan should build around.')">
     @php($days = ['mon' => __('Monday'), 'tue' => __('Tuesday'), 'wed' => __('Wednesday'), 'thu' => __('Thursday'), 'fri' => __('Friday'), 'sat' => __('Saturday'), 'sun' => __('Sunday')])
     @php($slots = old('p.slots', array_map(fn ($s) => array_combine(['day', 'time'], explode(' ', $s) + [1 => '']), $profile['slots'] ?? [])))
     <x-field :label="__('Weekly posting slots')" :help="__('The post form suggests the next free one and the planner dates the posts on them.')">
@@ -260,7 +260,7 @@
     </x-field>
 </x-section>
 
-<x-section x-show="tab === 'research'" x-cloak :title="__('Research')" :description="__('Steers the trend research, the planner and the weekly listening report.')">
+<x-section icon="magnifying-glass" x-show="tab === 'research'" x-cloak :title="__('Research')" :description="__('Steers the trend research, the planner and the weekly listening report.')">
     <x-field :label="__('Sites to search first')" for="p-sources" :help="__('One per line.')">
         <textarea id="p-sources" name="p[research][sources]" rows="2" class="{{ $input }}" placeholder="cretalive.gr">{{ $text('research.sources', "\n") }}</textarea>
     </x-field>
@@ -278,7 +278,7 @@
     </x-field>
 </x-section>
 
-<x-section x-show="tab === 'more'" x-cloak :title="__('Replies and webhooks')" :description="__('Answers you give often, and the addresses developers connect.')">
+<x-section icon="chat-bubble-left-ellipsis" x-show="tab === 'more'" x-cloak :title="__('Replies and webhooks')" :description="__('Answers you give often, and the addresses developers connect.')">
     <x-field :label="__('Saved replies')" :help="__('Label, text, and the keywords that trigger it on a new Instagram or Facebook comment. An empty row is ignored; save to get a new empty row.')">
         @foreach ($rows(old('p.saved_replies', $profile['saved_replies'] ?? [])) as $i => $row)
             <div class="grid gap-2 sm:grid-cols-6 {{ $i ? 'mt-2' : '' }}">
@@ -304,7 +304,7 @@
 </x-section>
 
 <div class="mt-4 flex items-center gap-4" x-show="!['plan', 'import'].includes(tab)">
-    <x-primary-button>{{ __('Save') }}</x-primary-button>
+    <x-primary-button><x-icon name="check" class="h-4 w-4" />{{ __('Save') }}</x-primary-button>
     <a href="{{ route('clients.index') }}" class="text-sm text-gray-600 hover:text-gray-900">{{ __('Cancel') }}</a>
     @if (session('status') === 'client-updated')
         <p class="text-sm text-gray-600">{{ __('Saved.') }}</p>

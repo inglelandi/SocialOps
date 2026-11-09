@@ -6,11 +6,11 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
             @if (session('status'))
-                <p class="text-sm font-medium text-green-700">{{ session('status') }}.</p>
+                <p class="flex items-center gap-1.5 text-sm font-medium text-green-700"><x-icon name="check-circle" class="h-5 w-5" />{{ session('status') }}.</p>
             @endif
 
             {{-- the team's working file with the posts prepared to go up: one file, read as text like the folder's documents --}}
-            <x-section :title="__('Posts slideshow')" :description="__('The Google Slides file where the team keeps the posts that will go up. Claude reads it when it plans or makes posts for this client: it does not plan them again, plans around them and writes the same way.')">
+            <x-section icon="presentation-chart-bar" :title="__('Posts slideshow')" :description="__('The Google Slides file where the team keeps the posts that will go up. Claude reads it when it plans or makes posts for this client: it does not plan them again, plans around them and writes the same way.')">
                 <div class="py-5 text-sm">
                     @error('slideshow') <p class="mb-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     @if ($slideshow)
@@ -23,8 +23,8 @@
                                     {{ __('Not read yet') }}
                                 @endif
                             </span>
-                            <form method="POST" action="{{ route('clients.files.slideshow.sync', $client) }}">@csrf<x-secondary-button type="submit">{{ __('Read it now') }}</x-secondary-button></form>
-                            <form method="POST" action="{{ route('accounts.destroy', $slideshow) }}" onsubmit="return confirm('{{ __('Unlink this slideshow? Its text is forgotten here; nothing changes on Drive.') }}')">@csrf @method('DELETE')<button type="submit" class="text-sm text-red-600 hover:underline">{{ __('Unlink') }}</button></form>
+                            <form method="POST" action="{{ route('clients.files.slideshow.sync', $client) }}">@csrf<x-secondary-button type="submit"><x-icon name="arrow-path" class="h-4 w-4" />{{ __('Read it now') }}</x-secondary-button></form>
+                            <form method="POST" action="{{ route('accounts.destroy', $slideshow) }}" onsubmit="return confirm('{{ __('Unlink this slideshow? Its text is forgotten here; nothing changes on Drive.') }}')">@csrf @method('DELETE')<button type="submit" class="inline-flex items-center gap-1 text-sm text-red-600 hover:underline"><x-icon name="link-slash" class="h-4 w-4" />{{ __('Unlink') }}</button></form>
                         </div>
                         @if ($slideshow->meta['error'] ?? null)
                             <p class="mt-2 text-sm text-red-600">{{ $slideshow->meta['error'] }}</p>
@@ -42,7 +42,7 @@
                         <p class="text-gray-600">{{ __('Share the file with :email (Viewer is enough), or open it to anyone with the link, before linking it.', ['email' => $driveEmail]) }}</p>
                         <form method="POST" action="{{ route('clients.files.slideshow', $client) }}" class="mt-3 flex flex-col gap-2 sm:flex-row">@csrf
                             <x-text-input name="slideshow" type="text" class="block w-full min-w-0 text-sm" :value="old('slideshow')" placeholder="https://docs.google.com/presentation/d/…" required />
-                            <x-primary-button class="flex-none">{{ __('Link') }}</x-primary-button>
+                            <x-primary-button class="flex-none"><x-icon name="link" class="h-4 w-4" />{{ __('Link') }}</x-primary-button>
                         </form>
                     @else
                         <p class="text-gray-600">{{ __('Add GOOGLE_SERVICE_ACCOUNT_JSON to .env to pull files from a shared Drive folder (docs/pilot-setup.md).') }}</p>
@@ -50,7 +50,7 @@
                 </div>
             </x-section>
 
-            <x-section :title="__('Google Drive folder')" :description="__('What Claude reads when it plans this client: the previous posts, so it does not repeat them, and the reference files, as facts.')">
+            <x-section icon="folder" :title="__('Google Drive folder')" :description="__('What Claude reads when it plans this client: the previous posts, so it does not repeat them, and the reference files, as facts.')">
                 <div class="py-5 text-sm">
                     @error('folder') <p class="mb-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     @if ($folder)
@@ -65,8 +65,8 @@
                                     {{ __('Not read yet') }}
                                 @endif
                             </span>
-                            <form method="POST" action="{{ route('clients.files.sync', $client) }}">@csrf<x-secondary-button type="submit">{{ __('Read the folder now') }}</x-secondary-button></form>
-                            <form method="POST" action="{{ route('accounts.destroy', $folder) }}" onsubmit="return confirm('{{ __('Unlink this folder? Its files are forgotten here; nothing changes on Drive.') }}')">@csrf @method('DELETE')<button type="submit" class="text-sm text-red-600 hover:underline">{{ __('Unlink') }}</button></form>
+                            <form method="POST" action="{{ route('clients.files.sync', $client) }}">@csrf<x-secondary-button type="submit"><x-icon name="arrow-path" class="h-4 w-4" />{{ __('Read the folder now') }}</x-secondary-button></form>
+                            <form method="POST" action="{{ route('accounts.destroy', $folder) }}" onsubmit="return confirm('{{ __('Unlink this folder? Its files are forgotten here; nothing changes on Drive.') }}')">@csrf @method('DELETE')<button type="submit" class="inline-flex items-center gap-1 text-sm text-red-600 hover:underline"><x-icon name="link-slash" class="h-4 w-4" />{{ __('Unlink') }}</button></form>
                         </div>
                         @if ($folder->meta['error'] ?? null)
                             <p class="mt-2 text-sm text-red-600">{{ $folder->meta['error'] }}</p>
@@ -85,7 +85,7 @@
                         <p class="text-gray-600">{{ __('Share the folder with :email (Viewer is enough) before linking it.', ['email' => $driveEmail]) }}</p>
                         <form method="POST" action="{{ route('clients.files.link', $client) }}" class="mt-3 flex flex-col gap-2 sm:flex-row">@csrf
                             <x-text-input name="folder" type="text" class="block w-full min-w-0 text-sm" :value="old('folder')" placeholder="https://drive.google.com/drive/folders/…" required />
-                            <x-primary-button class="flex-none">{{ __('Link') }}</x-primary-button>
+                            <x-primary-button class="flex-none"><x-icon name="link" class="h-4 w-4" />{{ __('Link') }}</x-primary-button>
                         </form>
                     @else
                         <p class="text-gray-600">{{ __('Add GOOGLE_SERVICE_ACCOUNT_JSON to .env to pull files from a shared Drive folder (docs/pilot-setup.md).') }}</p>
@@ -94,10 +94,10 @@
             </x-section>
 
             @if ($folder)
-                <x-section :title="__('Files')" :description="__('Previous posts: what the client published, so Claude does not repeat it. Reference: facts Claude plans from. Not used: left out.')" flush>
+                <x-section icon="document-text" :title="__('Files')" :description="__('Previous posts: what the client published, so Claude does not repeat it. Reference: facts Claude plans from. Not used: left out.')" flush>
                     @if ($documents->isEmpty())
                         <div class="p-6">
-                            <x-empty-state>{{ __('No documents in this folder yet. Word, Excel, PowerPoint, Google Docs, Sheets, Slides and text files are read as text; photos, graphics, PDFs and videos are listed under Designs.') }}</x-empty-state>
+                            <x-empty-state icon="document-text">{{ __('No documents in this folder yet. Word, Excel, PowerPoint, Google Docs, Sheets, Slides and text files are read as text; photos, graphics, PDFs and videos are listed under Designs.') }}</x-empty-state>
                         </div>
                     @else
                         <ul class="divide-y divide-gray-200 text-sm">
@@ -129,10 +129,10 @@
                 </x-section>
 
                 {{-- the pictures come from Drive on each view (clients.files.preview) and are never kept; only Claude's description is --}}
-                <x-section :title="__('Designs')" :description="__('Photos, graphics, PDFs and videos of the posts the client published: Claude looks at Drive\'s preview of each one and describes the post it shows, once. Only that text is kept here, never the picture.')" flush>
+                <x-section icon="swatch" :title="__('Designs')" :description="__('Photos, graphics, PDFs and videos of the posts the client published: Claude looks at Drive\'s preview of each one and describes the post it shows, once. Only that text is kept here, never the picture.')" flush>
                     @if ($designTotal === 0)
                         <div class="p-6">
-                            <x-empty-state>{{ __('No designs in this folder yet. Photos, Illustrator, Photoshop, InDesign and EPS files, PDFs and videos are listed here.') }}</x-empty-state>
+                            <x-empty-state icon="swatch">{{ __('No designs in this folder yet. Photos, Illustrator, Photoshop, InDesign and EPS files, PDFs and videos are listed here.') }}</x-empty-state>
                         </div>
                     @else
                         <p class="px-6 py-3 text-sm text-gray-600">{{ __(':done of :total described; Claude describes up to 25 an hour.', $described) }}</p>

@@ -52,6 +52,6 @@
             <x-input-label for="note" :value="__('Anything we should know? (optional)')" />
             <textarea id="note" name="note" rows="2" maxlength="500" class="mt-1 block w-full border-gray-300 focus:border-brand-500 focus:ring-brand-500 rounded-md shadow-sm">{{ old('note') }}</textarea>
         </div>
-        <x-primary-button class="w-full justify-center">{{ __('Send') }}</x-primary-button>
+        <x-primary-button class="w-full justify-center"><x-icon name="paper-airplane" class="h-4 w-4" />{{ __('Send') }}</x-primary-button>
     </form>
 </x-guest-layout>

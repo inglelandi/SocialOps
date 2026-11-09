@@ -6,12 +6,12 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 text-sm">
             @if (session('status'))
-                <p class="text-green-600">{{ str_starts_with(session('status'), 'Claude: ') ? session('status') : __(ucfirst(str_replace('-', ' ', session('status')))).'.' }}</p>
+                <p class="flex items-center gap-1.5 text-green-600"><x-icon name="check-circle" class="h-5 w-5" />{{ str_starts_with(session('status'), 'Claude: ') ? session('status') : __(ucfirst(str_replace('-', ' ', session('status')))).'.' }}</p>
             @endif
             @error('comment') <p class="text-red-600">{{ $message }}</p> @enderror
 
             @php($fetched = __('Comments under the last 30 days of Instagram and Facebook posts and direct messages of the last 30 days, fetched every hour. Claude drafts, you send. Meta takes a message reply within 24 hours of the person\'s last message.'))
-            <x-section :title="__('To answer').' ('.$open->count().')'" :description="$fetched">
+            <x-section icon="inbox" :title="__('To answer').' ('.$open->count().')'" :description="$fetched">
                 <form method="GET" class="flex flex-wrap items-center gap-2 py-4">
                     <nav class="flex gap-1 overflow-x-auto text-sm" aria-label="{{ __('Kinds') }}">
                         @foreach (['attention' => __('Needs attention'), 'questions' => __('Questions'), 'complaints' => __('Complaints'), 'all' => __('All')] as $key => $label)
@@ -62,22 +62,22 @@
                                 </select>
                             @endif
                             <textarea name="reply" rows="3" class="block w-full border-gray-300 focus:border-brand-500 focus:ring-brand-500 rounded-md shadow-sm text-sm" placeholder="{{ __('Your reply') }}">{{ old('reply', $comment->reply) }}</textarea>
-                            <x-primary-button class="mt-2">{{ __('Send reply') }}</x-primary-button>
+                            <x-primary-button class="mt-2"><x-icon name="paper-airplane" class="h-4 w-4" />{{ __('Send reply') }}</x-primary-button>
                         </form>
                     </div>
                 @empty
                     @if ($tab !== 'all' || request('platform'))
-                        <x-empty-state class="my-4" :action="__('Show everything')" :href="route('clients.comments', $client)">{{ __('Nothing here; the other tabs may still have something.') }}</x-empty-state>
+                        <x-empty-state icon="funnel" class="my-4" :action="__('Show everything')" :href="route('clients.comments', $client)">{{ __('Nothing here; the other tabs may still have something.') }}</x-empty-state>
                     @elseif ($client->accounts()->whereIn('platform', ['instagram', 'facebook'])->doesntExist())
-                        <x-empty-state class="my-4" :action="__('Connect an account')" :href="route('clients.accounts', $client)">{{ __('Nothing to answer yet: connect Instagram or Facebook and comments and messages arrive here every hour.') }}</x-empty-state>
+                        <x-empty-state icon="link" class="my-4" :action="__('Connect an account')" :href="route('clients.accounts', $client)">{{ __('Nothing to answer yet: connect Instagram or Facebook and comments and messages arrive here every hour.') }}</x-empty-state>
                     @else
-                        <x-empty-state class="my-4">{{ __('Nothing to answer. New comments and messages arrive every hour.') }}</x-empty-state>
+                        <x-empty-state icon="chat-bubble-left-right" class="my-4">{{ __('Nothing to answer. New comments and messages arrive every hour.') }}</x-empty-state>
                     @endif
                 @endforelse
             </x-section>
 
             @if ($done->isNotEmpty())
-                <x-section :title="__('Answered or hidden, last 30 days')">
+                <x-section icon="archive-box" :title="__('Answered or hidden, last 30 days')">
                     @foreach ($done as $comment)
                         <div id="comment-{{ $comment->id }}" class="py-3">
                             <p class="text-gray-600">{{ $comment->label() }} · <span class="font-medium text-gray-800">{{ $comment->author ?? '?' }}</span> · {{ $comment->posted_at->translatedFormat('D d-m-Y H:i') }} · {{ $comment->hidden_at ? __('hidden') : __('replied :when', ['when' => $comment->replied_at->translatedFormat('D d-m-Y H:i')]) }}</p>

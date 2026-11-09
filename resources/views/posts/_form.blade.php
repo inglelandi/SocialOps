@@ -2,7 +2,7 @@
 @php($languages = array_merge($client->profile['languages'], $client->profile['extra_languages'] ?? []))
 @php($selected = old('platforms', $post->platforms ?? []))
 @php($control = 'mt-1 block w-full rounded-md border-gray-300 focus:border-brand-500 focus:ring-brand-500')
-<x-section :title="__('Post')" :description="__('Where it goes, what it is and when it is due.')">
+<x-section icon="rectangle-stack" :title="__('Post')" :description="__('Where it goes, what it is and when it is due.')">
 <div class="grid gap-6 py-5 md:grid-cols-2">
     <div>
         <x-input-label :value="__('Platforms')" />
@@ -83,7 +83,7 @@
 </x-section>
 
 @if (config('features.publishing'))
-<x-section data-for="instagram tiktok" :title="__('Platform settings')" flush>
+<x-section icon="adjustments-horizontal" data-for="instagram tiktok" :title="__('Platform settings')" flush>
 <fieldset class="px-6 py-5 text-sm" data-for="instagram">
     <legend class="px-1 text-sm font-medium">Instagram</legend>
     <x-input-label for="ig-collab" :value="__('Collab invite: up to 3 Instagram usernames, feed, carousel and Reel only (they accept in the app, then the post shows on both profiles)')" />
@@ -130,7 +130,7 @@
 @endif
 
 
-<x-section data-for="instagram facebook" :title="__('First comment')" :description="__('Hashtags or a link that go under the post as its first comment.')">
+<x-section icon="chat-bubble-bottom-center-text" data-for="instagram facebook" :title="__('First comment')" :description="__('Hashtags or a link that go under the post as its first comment.')">
 <div class="py-5">
 <textarea name="settings[first_comment]" rows="2" class="{{ $control }} text-sm">{{ old('settings.first_comment', $post->settings['first_comment'] ?? '') }}</textarea>
 <x-input-error class="mt-1" :messages="$errors->get('settings.first_comment')" />
@@ -138,7 +138,7 @@
 </x-section>
 
 @php($design = old('settings.design', $post->settings['design'] ?? []))
-<x-section :title="__('Design text')" :description="__('The words on the graphic or in the video: the headline, the slide texts or the Reel script.')">
+<x-section icon="paint-brush" :title="__('Design text')" :description="__('The words on the graphic or in the video: the headline, the slide texts or the Reel script.')">
 <div class="grid gap-4 py-5 md:grid-cols-{{ count($languages) }}">
     @foreach ($languages as $lang)
         <div>
@@ -149,7 +149,7 @@
 </div>
 </x-section>
 
-<x-section :title="__('Captions')" :description="__('Only the ticked platforms are kept. A person checks the Greek before the client sees it.')">
+<x-section icon="pencil-square" :title="__('Captions')" :description="__('Only the ticked platforms are kept. A person checks the Greek before the client sees it.')">
 <div class="space-y-2 py-4">
 <label class="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" id="sync-captions" class="rounded border-gray-300"> {{ __('Same text on every platform (untick to write each one separately)') }}</label>
 @if (! config('features.claude_api'))
@@ -161,7 +161,7 @@
 @if ($post->exists && config('features.claude_api'))
     <div class="mt-3 flex gap-2">
         <x-text-input id="instruction" type="text" class="block w-full text-sm" placeholder="{{ __('e.g. make it shorter and more playful, add the opening hours, mention the full moon party on Saturday') }}" onkeydown="if (event.key === 'Enter') { event.preventDefault(); document.getElementById('rewrite').click(); }" />
-        <x-secondary-button type="button" id="rewrite" class="whitespace-nowrap" data-url="{{ route('posts.rewrite', $post) }}">{{ __('Change with Claude') }}</x-secondary-button>
+        <x-secondary-button type="button" id="rewrite" class="whitespace-nowrap" data-url="{{ route('posts.rewrite', $post) }}"><x-icon name="sparkles" class="h-4 w-4" />{{ __('Change with Claude') }}</x-secondary-button>
     </div>
     <p class="mt-1 text-xs text-gray-600">{{ __('Rewrites the captions of every ticked platform as you say; nothing is saved until you press Save.') }}</p>
 @endif
@@ -271,6 +271,6 @@
 </script>
 
 <div class="sticky bottom-0 flex items-center gap-4 rounded-xl border border-gray-300 bg-white/95 px-6 py-3 backdrop-blur">
-    <x-primary-button>{{ __('Save') }}</x-primary-button>
+    <x-primary-button><x-icon name="check" class="h-4 w-4" />{{ __('Save') }}</x-primary-button>
     <a href="{{ route('calendar', ['client' => $client->slug]) }}" class="text-sm text-gray-600 hover:underline">{{ __('Back to calendar') }}</a>
 </div>
