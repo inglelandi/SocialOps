@@ -25,7 +25,7 @@ test('the team queues captions and plans for Claude in the app; the scheduled wo
         ->assertSee(['"post":'.$post->id, route('posts.edit', $post), 'get-caption-brief', '"job":'.$job->id, 'Full moon parties', "save-plan with job {$job->id}"]);
 
     SocialOpsServer::tool(UpdatePost::class, ['post' => $post->id, 'settings' => ['ask_claude' => false]])->assertOk();
-    SocialOpsServer::tool(SavePlan::class, ['client' => 'almyra', 'job' => $job->id, 'posts' => [['date' => '2027-05-12', 'platforms' => ['instagram'], 'format' => 'feed', 'pillar' => $pillar, 'title' => 'Full moon', 'angle' => 'Party on the beach.']]])->assertOk();
+    SocialOpsServer::tool(SavePlan::class, ['client' => 'almyra', 'job' => $job->id, 'posts' => [['date' => '2027-05-12', 'platforms' => ['instagram'], 'format' => 'feed', 'pillar' => $pillar, 'title' => 'Full moon', 'angle' => 'Party on the beach.', 'captions' => ['el' => ['instagram' => 'Πανσέληνος στην παραλία']]]]])->assertOk(); // with its captions, so no caption job is left behind
     SocialOpsServer::tool(ListClaudeJobs::class, [])->assertOk()->assertSee(['"captions":[]', '"plans":[]']);
     expect(Report::where('kind', 'claude_job')->count())->toBe(0);
 });

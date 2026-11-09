@@ -15,7 +15,7 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Step 2 of planning: file the plan you made from get-planning-brief. Every post becomes a Draft on the calendar (named by the convention, dated on the client\'s next free posting slot from its date, or kept on its day at the client\'s usual time when fixed_date says the post is about that day, a caption per platform and language when given; captions within the post form\'s limits, else nothing is filed and the error names the post to shorten), the trend brief and a review sheet land in the client\'s reports, and the sheet is what the Word export of the θεματολογία is made from. A human reviews, sends for approval and posts; nothing is published here.')]
+#[Description('Step 2 of planning: file the plan you made from get-planning-brief. Every post becomes a Draft on the calendar (named by the convention, dated on the client\'s next free posting slot from its date, or kept on its day at the client\'s usual time when fixed_date says the post is about that day, a caption per platform and language from each post\'s captions, which every post should carry; captions within the post form\'s limits, else nothing is filed and the error names the post to shorten; a post sent without any caption is filed all the same, queued as a caption job and listed under captions_missing, to write with get-caption-brief and update-post before you stop), the trend brief and a review sheet land in the client\'s reports, and the sheet is what the Word export of the θεματολογία is made from. A human reviews, sends for approval and posts; nothing is published here.')]
 class SavePlan extends Tool
 {
     use ScopedToToken;
@@ -25,6 +25,10 @@ class SavePlan extends Tool
         $client = $this->client($request->get('client'));
         $profile = $client->toProfileArray();
         $languages = array_merge($profile['languages'], $profile['extra_languages'] ?? []);
+        // captions keyed any other way would be dropped by the validation below without a word: refuse them, naming the post
+        if ($misshapen = self::misshapenCaptions((array) $request->get('posts'), $languages)) {
+            throw ValidationException::withMessages($misshapen);
+        }
 
         $input = Validator::make($request->all(), [
             'job' => ['nullable', 'integer'],
@@ -74,13 +78,52 @@ class SavePlan extends Tool
             ClaudeQueue::clear($job); // with identical requests that slipped in next to it
         }
 
+        // a Draft without a single caption is a brief, not a post: it waits in the caption queue, so nobody opens an empty post
+        $bare = $client->posts()->whereIn('name', array_column($result['posts'], 'name'))
+            ->whereDoesntHave('variants', fn ($q) => $q->whereNotNull('caption')->where('caption', '!=', ''))->get();
+        foreach ($bare as $post) {
+            $post->forceFill(['settings' => array_merge($post->settings ?? [], ['ask_claude' => true])])->save();
+        }
+
         return Response::json([
             'drafts' => count($result['posts']),
             'review_sheet' => route('reports.show', $sheet),
             'word' => route('reports.word', $sheet),
             'posts' => array_map(fn ($p) => ['date' => $p['date'], 'time' => $p['time'], 'fixed_date' => $p['fixed_date'], 'name' => $p['name'], 'url' => $p['url']] + (isset($p['planned_date']) ? ['planned_date' => $p['planned_date']] : []), $result['posts']),
+            ...$bare->isEmpty() ? [] : [
+                'captions_missing' => $bare->map(fn (Post $p) => ['post' => $p->id, 'name' => $p->name, 'url' => route('posts.edit', $p)])->values()->all(),
+                'then' => $bare->count().' of these posts came without captions, so they are queued as caption jobs ("Ask Claude for the captions"). Write them now, one post at a time: get-caption-brief, then update-post with the variants and settings {ask_claude: false}.',
+            ],
             'next' => 'The team reviews the Drafts in the app, sends them for approval and posts them by hand.',
         ]);
+    }
+
+    /**
+     * The captions of each post are keyed by language first ({el: {instagram: "..."}}), next to hashtags, alt_text, design and
+     * notes_for_reviewer; any other key (a platform first, a language the client does not write in) is named, post by post.
+     *
+     * @return array<string, string>
+     */
+    private static function misshapenCaptions(array $posts, array $languages): array
+    {
+        $errors = [];
+        foreach ($posts as $i => $post) {
+            $captions = is_array($post) ? ($post['captions'] ?? null) : null;
+            if (! is_array($captions)) {
+                continue;
+            }
+            $title = is_string($post['title'] ?? null) ? $post['title'] : 'post '.($i + 1);
+            foreach (array_keys($captions) as $key) {
+                if (in_array($key, [...$languages, 'hashtags', 'alt_text', 'design', 'notes_for_reviewer'], true)) {
+                    continue;
+                }
+                $errors["posts.$i.captions.$key"] = in_array($key, Post::PLATFORMS, true)
+                    ? "\"{$title}\": captions go language first, then platform: {".$languages[0].": {{$key}: \"...\"}}, not {{$key}: {".$languages[0].': "..."}}.'
+                    : "\"{$title}\": \"{$key}\" is not one of the client's languages (".implode(', ', $languages).') nor hashtags, alt_text, design or notes_for_reviewer.';
+            }
+        }
+
+        return $errors;
     }
 
     public function schema(JsonSchema $schema): array
