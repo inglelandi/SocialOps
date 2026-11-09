@@ -43,14 +43,19 @@ class ClientController extends Controller
 
     public function edit(Client $client): View
     {
-        $read = $client->documents()->where('chars', '>', 0);
+        $read = $client->documents()->where('chars', '>', 0)->whereNot('kind', 'design');
 
         return view('clients.edit', [
             'client' => $client,
             'accounts' => PlanRequest::accounts($client->toProfileArray()),
             'claudeJobs' => $client->reports()->where('kind', 'claude_job')->orderBy('id')->get(),
             // the reference folder of the Files tab, for the line under the MCP "Plan with Claude" box; null while none is linked
-            'documents' => $client->accounts()->where('platform', 'drive_docs')->exists() ? ['read' => $read->count(), 'previous' => $read->clone()->where('kind', 'previous_posts')->count()] : null,
+            'documents' => $client->accounts()->where('platform', 'drive_docs')->exists() ? [
+                'read' => $read->count(),
+                'previous' => $read->clone()->where('kind', 'previous_posts')->count(),
+                'designs' => $client->documents()->where('kind', 'design')->whereNotNull('described_at')->count(),
+                'waiting' => ClaudeQueue::designs()->where('client_id', $client->id)->count(),
+            ] : null,
         ]);
     }
 

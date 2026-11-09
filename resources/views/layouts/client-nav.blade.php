@@ -5,7 +5,7 @@
     $tabs = [
         [__('Calendar'), route('calendar', ['client' => $client->slug]), request()->routeIs('calendar', 'posts.*'), null],
         [__('Assets'), route('clients.assets', $client), request()->routeIs('clients.assets'), null],
-        [__('Files'), route('clients.files', $client), request()->routeIs('clients.files'), $client->documents()->where('chars', '>', 0)->count()], // the files read from the client's Drive folder
+        [__('Files'), route('clients.files', $client), request()->routeIs('clients.files'), $client->documents()->where('chars', '>', 0)->whereNot('kind', 'design')->count()], // the documents read from the client's Drive folder (its designs are counted on the tab)
         [__('Grid'), route('clients.grid', $client), request()->routeIs('clients.grid'), null],
         [__('Approvals'), route('clients.reviews', $client), request()->routeIs('clients.reviews'), $client->posts()->where('state', \App\Posts\PostState::InReview)->count()],
         [__('Deadlines'), route('clients.deadlines', $client), request()->routeIs('clients.deadlines'), $client->deadlines()->dueSoon()->count()],

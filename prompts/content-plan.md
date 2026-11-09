@@ -43,6 +43,10 @@ These are the posts the client published before Social Ops and its own content c
 Facts the client wrote down (menus, prices, services, rooms, events, guidelines, earlier briefs): plan from these exactly as from "About the client", never invent beyond them; when they contradict About, prefer the newer file and say so in notes_for_reviewer.
 {{reference}}
 
+## Past designs from the client's folder (described from the images)
+These are posts the client published before, seen from their graphics (one line each, newest first: the Drive date, the file, what it showed and the text on it): do not repeat their offers or hooks; keep the recurring formats and seasons.
+{{designs}}
+
 ## Rules
 - Prefer what the client's files say over your own assumptions.
 - Use the trend brief for roughly half of the posts; the rest are evergreen posts from the pillars. Name the signal each trend post uses.

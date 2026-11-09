@@ -68,9 +68,8 @@ test('plain text, Markdown, CSV and JSON come back as they are, without a BOM, W
         ->and(DocumentText::extract('text/plain', "\xC3\xE5\xE9\xDC \xF3\xE1\xF2", 'old.txt'))->toBe('Γειά σας'); // a Greek Windows-1253 text file
 });
 
-test('PDF, the old Office formats and unknown types are refused with a reason in plain words', function () {
-    expect(fn () => DocumentText::extract('application/pdf', '%PDF-1.4', 'menu.pdf'))->toThrow(RuntimeException::class, DocumentText::PDF)
-        ->and(fn () => DocumentText::extract('application/octet-stream', '%PDF-1.4', 'menu.PDF'))->toThrow(RuntimeException::class, DocumentText::PDF)
+test('the old Office formats and unknown types are refused with a reason in plain words; a PDF is a design now, never read here', function () {
+    expect(fn () => DocumentText::extract('application/pdf', '%PDF-1.4', 'menu.pdf'))->toThrow(RuntimeException::class, DocumentText::UNREADABLE)
         ->and(fn () => DocumentText::extract('application/msword', "\xD0\xCF\x11\xE0", 'old.doc'))->toThrow(RuntimeException::class, DocumentText::OLD_OFFICE)
         ->and(fn () => DocumentText::extract('application/octet-stream', 'x', 'old.xls'))->toThrow(RuntimeException::class, DocumentText::OLD_OFFICE)
         ->and(fn () => DocumentText::extract('application/zip', 'PK', 'photos.zip'))->toThrow(RuntimeException::class, DocumentText::UNREADABLE)

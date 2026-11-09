@@ -54,6 +54,7 @@ Route::middleware(['auth', LimitClients::class])->group(function () {
     Route::post('/clients/{client}/files/folder', [ClientFilesController::class, 'link'])->name('clients.files.link');
     Route::post('/clients/{client}/files/sync', [ClientFilesController::class, 'sync'])->name('clients.files.sync');
     Route::patch('/clients/{client}/files/{document}', [ClientFilesController::class, 'kind'])->scopeBindings()->name('clients.files.kind'); // a document of another client is a 404
+    Route::get('/clients/{client}/files/{document}/preview', [ClientFilesController::class, 'preview'])->scopeBindings()->name('clients.files.preview'); // Drive's preview of a design, passed through, never kept
     Route::post('/clients/{client}/assets', [AssetController::class, 'store'])->name('assets.store'); // staff upload, one file or many
     Route::get('/assets/{asset}/thumb', [AssetController::class, 'thumb'])->name('assets.thumb');
     Route::get('/assets/{asset}/view', [AssetController::class, 'show'])->name('assets.view');

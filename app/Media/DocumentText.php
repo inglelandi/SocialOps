@@ -9,13 +9,12 @@ use ZipArchive;
 
 /**
  * A document's bytes as plain text, for Claude to read: Word, Excel and PowerPoint files (the Office Open XML zips), plain
- * text, Markdown, CSV and JSON as they are. PDF and the old binary Office formats are not read: the reason is said in
- * plain words, in English, and kept on the file's row (the Files tab translates it).
+ * text, Markdown, CSV and JSON as they are. The old binary Office formats are not read: the reason is said in
+ * plain words, in English, and kept on the file's row (the Files tab translates it). PDFs, photos and graphics never come here:
+ * the folder sync lists them as designs, for Claude to describe from Drive's preview.
  */
 final class DocumentText
 {
-    public const PDF = 'PDF files are not read: open it in Google Docs or save it as Word';
-
     public const OLD_OFFICE = 'Old Office format: save it as .docx/.xlsx';
 
     public const UNREADABLE = 'This file type is not read';
@@ -25,7 +24,7 @@ final class DocumentText
     /** A file is read whole in memory before its text comes out, so the queue worker never takes one over this size. */
     public const MAX_BYTES = 25 * 1024 * 1024;
 
-    public const REASONS = [self::PDF, self::OLD_OFFICE, self::UNREADABLE, self::TOO_BIG];
+    public const REASONS = [self::OLD_OFFICE, self::UNREADABLE, self::TOO_BIG];
 
     private const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
@@ -50,7 +49,6 @@ final class DocumentText
             $mime === self::XLSX || $extension === 'xlsx' => self::xlsx($bytes),
             $mime === self::PPTX || $extension === 'pptx' => self::pptx($bytes),
             in_array($mime, self::PLAIN, true) || str_starts_with($mime, 'text/') || in_array($extension, self::PLAIN_EXTENSIONS, true) => $bytes,
-            $mime === 'application/pdf' || $extension === 'pdf' => throw new RuntimeException(self::PDF),
             in_array($mime, self::OLD_OFFICE_MIMES, true) || in_array($extension, ['doc', 'xls', 'ppt'], true) => throw new RuntimeException(self::OLD_OFFICE),
             default => throw new RuntimeException(self::UNREADABLE),
         };

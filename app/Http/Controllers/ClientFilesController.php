@@ -8,26 +8,37 @@ use App\Models\Client;
 use App\Models\ClientDocument;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use RuntimeException;
 
 /**
  * The Files tab: a client's reference folder on Google Drive (an accounts row with platform drive_docs) and what was read
- * from it, so Claude plans from the client's previous posts and reference files. Separate from the photo inbox folder.
+ * from it, so Claude plans from the client's previous posts, reference files and past designs. Separate from the photo
+ * inbox folder. The designs' previews come from Drive on each view and are never kept here.
  */
 class ClientFilesController extends Controller
 {
-    public function index(Client $client): View
+    /** Designs listed on the tab before "Show all": each one's preview is a Drive call. */
+    public const DESIGNS_SHOWN = 60;
+
+    public function index(Request $request, Client $client): View
     {
         $folder = $client->accounts()->where('platform', 'drive_docs')->first();
         $order = array_flip(array_keys(ClientDocument::KINDS));
-        $documents = $folder ? $folder->documents()->get()->sortBy([fn (ClientDocument $a, ClientDocument $b) => ($order[$a->kind] <=> $order[$b->kind]) ?: strnatcasecmp($a->path.'/'.$a->name, $b->path.'/'.$b->name)])->values() : collect();
+        [$designs, $documents] = ($folder ? $folder->documents()->get() : collect())->partition(fn (ClientDocument $d) => $d->isDesign());
+        $documents = $documents->sortBy([fn (ClientDocument $a, ClientDocument $b) => ($order[$a->kind] <=> $order[$b->kind]) ?: strnatcasecmp($a->path.'/'.$a->name, $b->path.'/'.$b->name)])->values();
+        $designs = $designs->sortBy([fn (ClientDocument $a, ClientDocument $b) => ($b->modified_at?->getTimestamp() ?? 0) <=> ($a->modified_at?->getTimestamp() ?? 0) ?: strnatcasecmp($a->name, $b->name)])->values();
+        $describable = $designs->filter(fn (ClientDocument $d) => $d->kind === 'design' && $d->error === null);
 
         return view('clients.files', [
             'client' => $client,
             'folder' => $folder,
             'documents' => $documents,
+            'designs' => $request->boolean('all') ? $designs : $designs->take(self::DESIGNS_SHOWN),
+            'designTotal' => $designs->count(),
+            'described' => ['done' => $describable->whereNotNull('text')->count(), 'total' => $describable->count()],
             'driveEmail' => GoogleDrive::email(),
             // the photo inbox folder of the assets page: offered with one click, so the same link is not pasted twice
             'inbox' => $folder ? null : $client->accounts()->where('platform', 'drive')->first(),
@@ -60,12 +71,25 @@ class ClientFilesController extends Controller
         return redirect()->route('clients.files', $client)->with('status', __('Reading the folder now, the list refreshes in a minute or two'));
     }
 
-    /** The team says what a file is for; a sync never changes it again. */
+    /** The team says what a file is for (a document: previous posts, reference or not used; a design: design or not used); a sync never changes it again. */
     public function kind(Request $request, Client $client, ClientDocument $document): RedirectResponse
     {
-        $kind = $request->validate(['kind' => ['required', Rule::in(array_keys(ClientDocument::KINDS))]])['kind'];
+        $kind = $request->validate(['kind' => ['required', Rule::in(array_keys($document->kindChoices()))]])['kind'];
         $document->update(['kind' => $kind, 'kind_set_by_user' => true]);
 
         return redirect()->route('clients.files', $client);
+    }
+
+    /** A design's preview as Drive makes it, passed through for the tab: nothing is written to disk, the cache or the database. */
+    public function preview(Client $client, ClientDocument $document, GoogleDrive $drive): Response
+    {
+        abort_unless($document->isDesign() && $document->error !== ClientDocument::NO_PREVIEW, 404);
+        try {
+            $preview = $drive->preview($document->source_id, 400);
+        } catch (RuntimeException) {
+            abort(404);
+        }
+
+        return response($preview['bytes'], 200, ['Content-Type' => $preview['mime'], 'Cache-Control' => 'private, max-age=3600', 'X-Content-Type-Options' => 'nosniff']);
     }
 }
