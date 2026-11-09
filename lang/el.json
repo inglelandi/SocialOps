@@ -1017,5 +1017,10 @@
     "That was more than the server takes in one send, so nothing arrived. Please send fewer files at a time, or smaller videos.": "Ήταν περισσότερα από όσα δέχεται ο server σε μία αποστολή, οπότε δεν έφτασε τίποτα. Στείλτε λιγότερα αρχεία τη φορά ή μικρότερα βίντεο.",
     "Back to the upload page": "Πίσω στη σελίδα αποστολής",
     "This is the only admin login. Make another login admin on the Staff page first.": "Αυτός είναι ο μόνος διαχειριστής. Κάνε πρώτα διαχειριστή έναν άλλο χρήστη στη σελίδα Προσωπικό.",
-    "This is the last login: without one, anyone could make a new one on the setup page. Add another login on the Staff page first.": "Αυτός είναι ο τελευταίος χρήστης: χωρίς κανέναν, οποιοσδήποτε θα μπορούσε να φτιάξει νέο στη σελίδα εγκατάστασης. Πρόσθεσε πρώτα άλλον χρήστη στη σελίδα Προσωπικό."
+    "This is the last login: without one, anyone could make a new one on the setup page. Add another login on the Staff page first.": "Αυτός είναι ο τελευταίος χρήστης: χωρίς κανέναν, οποιοσδήποτε θα μπορούσε να φτιάξει νέο στη σελίδα εγκατάστασης. Πρόσθεσε πρώτα άλλον χρήστη στη σελίδα Προσωπικό.",
+    "Repeat": "Επανάληψη",
+    "Does not repeat": "Χωρίς επανάληψη",
+    "Every week": "Κάθε εβδομάδα",
+    "Every month": "Κάθε μήνα",
+    "Once it is published, a copy is drafted for a week or a month later and goes through approval again.": "Μόλις δημοσιευτεί, ετοιμάζεται αντίγραφο για μία εβδομάδα ή έναν μήνα αργότερα, που περνά ξανά από έγκριση."
 }
