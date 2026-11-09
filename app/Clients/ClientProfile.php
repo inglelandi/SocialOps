@@ -21,6 +21,9 @@ final class ClientProfile
     /** What Claude plans and writes from: the free-text fields of the About section, each a `{{about.<key>}}` in the prompts. */
     public const ABOUT = ['description', 'audience', 'offerings', 'differentiators', 'goals', 'current'];
 
+    /** The longest pillar key: posts.pillar and assets.pillar are 40-character columns. */
+    public const PILLAR_MAX = 40;
+
     /**
      * The nested sections (everything but slug, code, name, type, location), validated.
      *
@@ -39,6 +42,11 @@ final class ClientProfile
         $validator->after(function ($v) use ($data) {
             if (is_array($data['pillars'] ?? null) && $data['pillars'] !== [] && array_sum($data['pillars']) !== 100) { // no pillars is fine: Claude then picks the topics
                 $v->errors()->add('pillars', __('Pillar shares must add up to 100.'));
+            }
+            foreach (array_keys(is_array($data['pillars'] ?? null) ? $data['pillars'] : []) as $key) {
+                if (mb_strlen((string) $key) > self::PILLAR_MAX) { // posts and assets keep the pillar in a 40-character column
+                    $v->errors()->add('pillars', __('Pillar names are at most :max characters: ":name" is longer.', ['max' => self::PILLAR_MAX, 'name' => str_replace('_', ' ', (string) $key)]));
+                }
             }
             foreach (array_keys(is_array($data['fields'] ?? null) ? $data['fields'] : []) as $key) {
                 if (! preg_match('/^\p{Ll}[\p{L}\p{N}_]*$/u', (string) $key)) { // Greek or Latin, as long as it is lowercase

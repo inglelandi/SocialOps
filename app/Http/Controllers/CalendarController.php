@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Client;
 use App\Models\Post;
 use App\Planning\Holidays;
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
@@ -23,6 +24,9 @@ class CalendarController extends Controller
     {
         [$view, $date, $start, $end, $range] = $this->range($request);
         $clientSlug = $request->input('client');
+        $clients = $request->user()->clients()->get();
+        $client = is_string($clientSlug) ? $clients->firstWhere('slug', $clientSlug) : null;
+        abort_if(filled($clientSlug) && ! $client, 404); // an old or mistyped address, or a client this login does not see
         $filters = $request->only(['state', 'platform', 'pillar']);
 
         $posts = $request->user()->restrict(Post::with('client', 'assets'))
@@ -40,8 +44,6 @@ class CalendarController extends Controller
             ->latest()
             ->get();
 
-        $clients = $request->user()->clients()->get();
-        $client = $clients->firstWhere('slug', $clientSlug);
         $marks = array_map(fn (string $label) => explode(' · ', $label), Holidays::between($start, $end, Holidays::countries($client?->toProfileArray() ?? [])));
         foreach ($client ? [$client] : $clients as $owner) {
             foreach ($owner->profile['key_dates'] ?? [] as $keyDate) {
@@ -73,7 +75,7 @@ class CalendarController extends Controller
     /** The client's own posts behind a signed link, this month and the next, read only. */
     public function client(Client $client): View
     {
-        $posts = $client->posts()->with('variants')->whereBetween('scheduled_at', [now()->startOfMonth(), now()->addMonth()->endOfMonth()])->orderBy('scheduled_at')->get();
+        $posts = $client->posts()->with('variants')->whereBetween('scheduled_at', [now()->startOfMonth(), now()->addMonthNoOverflow()->endOfMonth()])->orderBy('scheduled_at')->get();
 
         return view('calendar.client', ['client' => $client, 'days' => $posts->groupBy(fn (Post $p) => $p->scheduled_at->toDateString()), 'lang' => $client->profile['languages'][0]]);
     }
@@ -129,6 +131,19 @@ class CalendarController extends Controller
         return $grids;
     }
 
+    /** A date from the address (YYYY-MM-DD, or anything Carbon reads), null when it is missing or not a date. */
+    public static function day(mixed $value): ?Carbon
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+        try {
+            return Carbon::parse($value)->startOfDay();
+        } catch (InvalidFormatException) {
+            return null;
+        }
+    }
+
     /** @return array{string, Carbon, Carbon, Carbon, ?array{Carbon, Carbon}} view, the date shown, first and last day shown, the from–to range when one was asked for */
     private function range(Request $request): array
     {
@@ -141,7 +156,7 @@ class CalendarController extends Controller
             // the grid shows whole weeks around the range, the list exactly its days
             return $view === 'list' ? [$view, $from, $from, $to->copy()->endOfDay(), [$from, $to]] : [$view, $from, $from->copy()->startOfWeek(), $to->copy()->endOfWeek(), [$from, $to]];
         }
-        $date = Carbon::parse($request->input('date', 'today'))->startOfDay();
+        $date = self::day($request->input('date')) ?? today(); // a date the address mangled is ignored, not an error page
 
         return match ($view) {
             'week' => [$view, $date, $date->copy()->startOfWeek(), $date->copy()->endOfWeek(), null],

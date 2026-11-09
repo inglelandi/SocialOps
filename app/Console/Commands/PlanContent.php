@@ -32,7 +32,7 @@ class PlanContent extends Command
         $request = new PlanRequest(
             profile: $profile,
             count: (int) $this->option('posts'),
-            platforms: $this->option('platforms') ? explode(',', $this->option('platforms')) : PlanRequest::accounts($profile),
+            platforms: $this->option('platforms') ? explode(',', $this->option('platforms')) : PlanRequest::plannable($profile),
             from: $from,
             to: $from->addDays((int) $this->option('days') - 1),
             instruction: trim((string) $this->option('instruction')),

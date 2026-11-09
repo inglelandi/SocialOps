@@ -30,6 +30,9 @@
     @if (session('status'))
         <p class="mt-3 rounded-md bg-green-50 p-3 text-sm text-green-800">{{ __(session('status') === 'approved' ? 'Approved, thank you!' : 'Noted, we will make the changes.') }}</p>
     @endif
+    @if (session('notice'))
+        <p class="mt-3 rounded-md bg-yellow-50 p-3 text-sm text-yellow-800" role="status">{{ session('notice') }}</p>
+    @endif
     @if ($errors->any())
         <ul class="mt-3 list-disc pl-5 text-sm text-red-600">
             @foreach ($errors->all() as $error) <li>{{ $error }}</li> @endforeach

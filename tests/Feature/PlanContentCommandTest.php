@@ -38,8 +38,8 @@ it('creates Draft posts with captions per platform and language, plus a review s
     $reports = Report::orderBy('id')->get();
     expect($reports->pluck('kind')->all())->toBe(['trend_brief', 'plan'])
         ->and($reports[0]->body)->toBe('# Trend brief')
-        ->and($reports[1]->title)->toBe('Πλάνο περιεχομένου 2027-05-10 έως 2027-05-23')
-        ->and($reports[1]->body)->toContain('## 1. Sunset cocktails (2027-05-12)')->toContain('Κάθε λεζάντα θέλει έλεγχο από άνθρωπο')
+        ->and($reports[1]->title)->toBe('Πλάνο περιεχομένου 10-05-2027 έως 23-05-2027')
+        ->and($reports[1]->body)->toContain('## 1. Sunset cocktails (12-05-2027 18:00)')->toContain('## 2. Sunset cocktails (14-05-2027 10:00)')->toContain('Κάθε λεζάντα θέλει έλεγχο από άνθρωπο')
         ->and($reports[1]->meta['posts'][0]['captions']['el']['instagram'])->toBe('Κοκτέιλ στο ηλιοβασίλεμα');
 });
 

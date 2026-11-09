@@ -16,13 +16,20 @@ class ReviewMail extends Mailable
 
     public function __construct(public Review $review, public string $kind)
     {
-        // completed and overdue go to the colleague who sent the review, the rest to the client's approvers
-        $this->locale(in_array($kind, ['completed', 'overdue']) ? ($review->creator?->locale ?? config('app.locale')) : $review->client->uiLocale());
+        // completed and overdue go to the colleague who sent the review, the rest to the client's approvers; the app's own default,
+        // not config('app.locale'): the client's answer that completes a review runs in the client's language (SetLocale)
+        $this->locale(in_array($kind, ['completed', 'overdue']) ? ($review->creator?->locale ?? config('app.default_locale', config('app.locale'))) : $review->client->uiLocale());
+    }
+
+    /** How many posts the mail is about: the request and the reminder ask only for the ones still waiting for an answer. */
+    public function postCount(): int
+    {
+        return in_array($this->kind, ['request', 'reminder'], true) ? $this->review->pending()->count() : $this->review->posts()->count();
     }
 
     public function envelope(): Envelope
     {
-        $vars = ['client' => $this->review->client->name, 'n' => $this->review->posts()->count()];
+        $vars = ['client' => $this->review->client->name, 'n' => $this->postCount()];
 
         return new Envelope(subject: match ($this->kind) {
             'request' => __(':client: :n posts to approve', $vars),

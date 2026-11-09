@@ -2,7 +2,9 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h2 class="text-2xl font-semibold tracking-tight text-gray-900">{{ __('Clients') }}</h2>
-            <a href="{{ route('clients.create') }}" class="inline-flex items-center rounded-lg bg-brand-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-600">{{ __('New client') }}</a>
+            @can('add-clients')
+                <a href="{{ route('clients.create') }}" class="inline-flex items-center rounded-lg bg-brand-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-600">{{ __('New client') }}</a>
+            @endcan
         </div>
     </x-slot>
 
@@ -15,7 +17,7 @@
                 <p class="mb-4 text-sm text-green-600">{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
             @endif
             @if ($clients->isEmpty())
-                <x-empty-state class="bg-white" :action="__('Add the first client')" :href="route('clients.create')">{{ __('No clients yet. A client profile holds the accounts, the voice, the pillars and the approvers; everything else hangs off it.') }}</x-empty-state>
+                <x-empty-state class="bg-white" :action="__('Add the first client')" :href="auth()->user()->can('add-clients') ? route('clients.create') : null">{{ __('No clients yet. A client profile holds the accounts, the voice, the pillars and the approvers; everything else hangs off it.') }}</x-empty-state>
             @else
             <div class="overflow-x-auto rounded-xl border border-gray-300 bg-white">
                 <table class="min-w-full text-sm">
@@ -56,7 +58,7 @@
                                     <p class="mt-1 text-xs text-gray-600">@if ($client->priority)<span class="{{ $priorities[$client->priority] ?? '' }}">{{ __(\App\Models\Client::PRIORITIES[$client->priority]) }}</span>@endif @if ($client->priority && $client->owner) · @endif{{ $client->owner }}</p>
                                 </td>
                                 <td class="whitespace-nowrap px-4 py-3">
-                                    @if ($client->plan_due)<span class="{{ $client->plan_due->isPast() ? 'text-red-600 font-medium' : '' }}">{{ $client->plan_due->format('d-m-Y') }}</span>@else <span class="text-gray-500">—</span> @endif
+                                    @if ($client->plan_due)<span class="{{ $client->plan_due->lt(today()) ? 'text-red-600 font-medium' : '' }}">{{ $client->plan_due->format('d-m-Y') }}</span>@else <span class="text-gray-500">—</span> @endif
                                 </td>
                                 <td class="whitespace-nowrap px-4 py-3 text-xs text-gray-700">
                                     @if ($client->posts_per_week !== null || $client->stories_per_week !== null)<p>{{ __(':posts posts, :stories stories a week', ['posts' => $client->posts_per_week ?? 0, 'stories' => $client->stories_per_week ?? 0]) }}</p>@endif

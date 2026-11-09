@@ -15,6 +15,13 @@ class PostRequest extends FormRequest
     /** Caption limits per platform, from prompts/caption-draft.md. */
     public const CAPTION_MAX = ['instagram' => 2200, 'facebook' => 63206, 'tiktok' => 2200, 'linkedin' => 3000];
 
+    /** The other text limits of a variant and a post (alt_text is a 1000-character column). */
+    public const ALT_TEXT_MAX = 1000;
+
+    public const HASHTAG_MAX = 100;
+
+    public const DESIGN_MAX = 5000;
+
     public function authorize(): bool
     {
         return $this->route('post')?->state !== PostState::Published;
@@ -40,7 +47,8 @@ class PostRequest extends FormRequest
             'platforms' => ['required', 'array', 'min:1'],
             'platforms.*' => [Rule::in(Post::PLATFORMS)],
             'format' => ['required', Rule::in(Post::FORMATS)],
-            'pillar' => ['nullable', Rule::in(array_keys($client->profile['pillars']))],
+            // a pillar renamed or removed in the profile since: the post may keep the one it has, so a caption change still saves
+            'pillar' => ['nullable', Rule::in(array_filter([...array_keys($client->profile['pillars']), $this->route('post')?->pillar]))],
             'brief' => ['nullable', 'string', 'max:5000'],
             'scheduled_at' => ['nullable', 'date'],
             'settings' => ['sometimes', 'array'],
@@ -50,7 +58,7 @@ class PostRequest extends FormRequest
             'settings.tiktok.allow_stitch' => ['nullable', 'boolean'],
             'settings.tiktok.commercial' => ['nullable', Rule::in(['none', 'your_brand', 'branded_content'])],
             'settings.tiktok.consent' => ['nullable', 'boolean'],
-            'settings.design.*' => ['nullable', 'string', 'max:5000'],
+            'settings.design.*' => ['nullable', 'string', 'max:'.self::DESIGN_MAX],
             'settings.first_comment' => ['nullable', 'string', 'max:2200'],
             'settings.instagram.collaborators' => ['nullable', 'string', 'max:120'],
             'settings.repeat' => ['nullable', Rule::in(['weekly', 'monthly'])],
@@ -59,9 +67,9 @@ class PostRequest extends FormRequest
             'assets.*' => [Rule::exists('assets', 'id')->where('client_id', $client->id)],
             'variants' => ['sometimes', 'array'],
             'variants.*.*.caption' => ['nullable', 'string'],
-            'variants.*.*.alt_text' => ['nullable', 'string', 'max:1000'],
+            'variants.*.*.alt_text' => ['nullable', 'string', 'max:'.self::ALT_TEXT_MAX],
             'variants.*.*.hashtags' => ['nullable'], // "#a #b" from the form, or a list from the API
-            'variants.*.*.hashtags.*' => ['string', 'max:100'],
+            'variants.*.*.hashtags.*' => ['string', 'max:'.self::HASHTAG_MAX],
         ];
     }
 

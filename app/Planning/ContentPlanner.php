@@ -66,7 +66,7 @@ class ContentPlanner
             }
         }
 
-        $actual = array_count_values(array_column($posts, 'pillar'));
+        $actual = array_count_values(array_filter(array_column($posts, 'pillar'), 'is_string')); // a post without a pillar is null
         foreach ($quota as $pillar => $n) {
             if (($actual[$pillar] ?? 0) !== $n) {
                 $warnings[] = "Pillar {$pillar}: planned ".($actual[$pillar] ?? 0).", quota {$n}";
@@ -89,7 +89,7 @@ class ContentPlanner
                     'date' => $string,
                     'platforms' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => $platforms]],
                     'format' => ['type' => 'string', 'enum' => self::FORMATS],
-                    'pillar' => ['type' => 'string', 'enum' => $pillars],
+                    'pillar' => $pillars ? ['type' => 'string', 'enum' => $pillars] : ['type' => 'null'], // no pillars in the profile: an empty enum no post could meet
                     'title' => $string,
                     'angle' => $string,
                     'trend_signal' => ['type' => ['string', 'null']],

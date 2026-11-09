@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
 class ImportClients extends Command
@@ -33,6 +34,9 @@ class ImportClients extends Command
             } catch (ValidationException $e) {
                 $failed++;
                 $this->error(basename($file).': '.implode(' ', Arr::flatten($e->errors())));
+            } catch (ParseException $e) {
+                $failed++; // a typo in one profile does not stop the others
+                $this->error(basename($file).': not valid YAML: '.$e->getMessage());
             }
         }
 

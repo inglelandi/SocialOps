@@ -1,6 +1,8 @@
 <x-app-layout :client="$client">
     @php($btn = 'inline-flex items-center rounded-lg border border-gray-400 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 hover:bg-gray-50')
     @php($main = 'inline-flex items-center rounded-lg bg-brand-500 px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-brand-600')
+    {{-- marked published by hand, never sent through a platform API: it can go back (PostState::back()) --}}
+    @php($handMarked = $post->state === \App\Posts\PostState::Published && ! $post->external_ids)
     <x-slot name="header">
         <h2 class="text-2xl font-semibold tracking-tight text-gray-900">{{ $client->name }} <span class="font-mono text-sm text-gray-600">{{ $post->name }}</span></h2>
     </x-slot>
@@ -8,12 +10,19 @@
         <x-state-badge :state="$post->state" />
         @foreach (collect($post->state->next())->sortBy(fn ($s) => $s === $post->state->forward() ? 0 : 1) as $next)
             @continue($next->needsPublishing() && ! config('features.publishing'))
-            <form method="POST" action="{{ route('posts.transition', $post) }}" @if ($next === \App\Posts\PostState::Withdrawn) onsubmit="return confirm('{{ __('Take this post down on every platform? Instagram and TikTok have no API for it, so those stay until deleted by hand.') }}')" @endif>
+            <form method="POST" action="{{ route('posts.transition', $post) }}" @if ($next === \App\Posts\PostState::Withdrawn) onsubmit="return confirm('{{ __('Take this post down on every platform? Instagram and TikTok have no API for it, so those stay until deleted by hand.') }}')" @elseif ($next === \App\Posts\PostState::Published) onsubmit="return confirm(@js(__('Did you post it in the app? This marks it published.')))" @endif>
                 @csrf
                 <input type="hidden" name="state" value="{{ $next->value }}">
                 <button type="submit" class="{{ $next === $post->state->forward() ? $main : $btn }}">{{ __($next->action()) }}</button>
             </form>
         @endforeach
+        @if ($handMarked)
+            <form method="POST" action="{{ route('posts.transition', $post) }}">
+                @csrf
+                <input type="hidden" name="state" value="{{ $post->state->back()->value }}">
+                <button type="submit" class="{{ $btn }}" title="{{ __('Back to Scheduled, or Approved when it has no date, so it can be edited again') }}">{{ __('Not published after all') }}</button>
+            </form>
+        @endif
         <a class="{{ $btn }}" href="{{ route('posts.export', $post) }}" title="{{ __('Media files plus a captions.txt, to post by hand or design in Canva') }}">{{ __('Export ZIP') }}</a>
         <details class="relative">
             <summary class="{{ $btn }} cursor-pointer list-none">{{ __('Duplicate') }}</summary>
@@ -53,6 +62,7 @@
             @if (session('status'))
                 <p class="text-sm text-green-600">{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
             @endif
+            @include('posts._repeat-drafted')
             @error('state') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
             @error('draft') <p class="text-sm text-red-600">{{ __('Drafting failed') }}: {{ $message }}</p> @enderror
             @if (session('notes'))
@@ -65,10 +75,15 @@
                 <p class="text-sm text-green-800 bg-green-50 rounded-md p-3">{{ __('Published') }}: {{ collect($post->external_ids)->map(fn ($id, $platform) => str_replace('_', ' ', $platform)." ($id)")->join(', ') }}</p>
             @endif
             @if ($post->state->isLocked())
-                <p class="text-sm text-yellow-800 bg-yellow-50 rounded-md p-3">{{ $post->state === \App\Posts\PostState::Published ? __('This post is published and can no longer be edited.') : __('This post is approved and locked. Saving a change sends it back to review.') }}</p>
+                @php($locked = match (true) {
+                    $handMarked => __('This post is marked published and can no longer be edited. If it did not go out, use Not published after all above.'),
+                    $post->state === \App\Posts\PostState::Published => __('This post is published and can no longer be edited.'),
+                    default => __('This post is approved and locked. Saving a change sends it back to review.'),
+                })
+                <p class="text-sm text-yellow-800 bg-yellow-50 rounded-md p-3">{{ $locked }}</p>
             @endif
             @foreach ($post->reviews()->wherePivotNotNull('comment')->get() as $review)
-                <p class="text-sm text-orange-800 bg-orange-50 rounded-md p-3"><span class="font-semibold">{{ $review->pivot->decided_by }}</span> ({{ $review->pivot->decided_at }}): {{ $review->pivot->comment }}</p>
+                <p class="text-sm text-orange-800 bg-orange-50 rounded-md p-3"><span class="font-semibold">{{ $review->pivot->decided_by }}</span> ({{ \Illuminate\Support\Carbon::parse($review->pivot->decided_at)->format('d-m-Y H:i') }}): {{ $review->pivot->comment }}</p>
             @endforeach
             <div class="lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
             <div class="lg:col-span-2">

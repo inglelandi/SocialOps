@@ -82,7 +82,7 @@ Not sub-processors (the Controller's own providers): Meta Platforms Ireland (Ins
 ## Annex 3: Technical and organisational measures (as built in Social Ops)
 
 - **Access to accounts**: the Controller's social accounts are connected through the networks' own OAuth consent; no passwords are ever stored. Access tokens are encrypted at rest with the application key, checked daily and renewed through the networks' own refresh mechanisms. The Controller can revoke access at any time in the network's settings.
-- **Isolation**: every record (accounts, media, posts, comments, reports) carries the client it belongs to; staff logins can be limited to named clients; API tokens are hashed and can be limited to one client.
+- **Isolation**: every record (accounts, media, posts, comments, reports) carries the client it belongs to; staff logins can be limited to named clients, and then see only those clients' work and cannot add clients; API tokens are hashed and can be limited to one client. The API and the Claude connector are rate limited per token, and the connector's sign-up per address.
 - **Approvers and clients without accounts**: approvers use signed links that expire; upload links expire after 30 days; account-connection links after 7 days; client calendar and report links after 30 days. No public registration exists.
 - **Human approval gate**: AI drafts, a person approves, nothing is published without approval (clause 2.2).
 - **Consent records**: each media file carries whether the people in it consented and whether reposting the content was permitted, as the Controller states on upload.

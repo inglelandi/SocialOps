@@ -14,7 +14,7 @@
 
 <x-mail::button :url="route('clients.reviews', $review->client)">{{ __('Open reviews') }}</x-mail::button>
 @else
-# {{ $kind === 'reminder' ? __('Reminder: ') : '' }}{{ __(':n posts for :client are ready for your approval', ['n' => $review->posts->count(), 'client' => $review->client->name]) }}
+# {{ $kind === 'reminder' ? __('Reminder: ') : '' }}{{ __(':n posts for :client are ready for your approval', ['n' => $review->pending()->count(), 'client' => $review->client->name]) }}
 
 {{ __('Please approve them or ask for changes by :due. It works on your phone, no login needed.', ['due' => $review->due_at->translatedFormat('D d-m-Y H:i')]) }}
 

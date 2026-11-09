@@ -21,7 +21,13 @@ class TopicsDocx
     {
         $locale = $report->client->uiLocale();
 
-        return __(':month posts :year', ['month' => self::month($report, $locale), 'year' => CarbonImmutable::parse($report->meta['window']['start'])->year], $locale);
+        return __(':month posts :year', ['month' => self::month($report, $locale), 'year' => self::mainMonth($report)->year], $locale);
+    }
+
+    /** "Almyra - November posts 2026.docx", without the characters a download name cannot have ("Bar/Restaurant" has a slash). */
+    public static function filename(Report $report): string
+    {
+        return trim(preg_replace('/[\/\\\\\x00-\x1F\x7F]+/u', '-', $report->client->name.' - '.self::title($report))).'.docx';
     }
 
     public static function build(Report $report): string
@@ -35,8 +41,8 @@ class TopicsDocx
             .self::p('');
 
         $tiktok = 0;
-        foreach ($report->meta['posts'] as $post) {
-            $date = CarbonImmutable::parse($post['date']);
+        foreach (self::posts($report) as $post) {
+            $date = $post['day'];
             $format = __(ucfirst(str_replace('_', ' ', $post['format'])), [], $locale);
             $tag = in_array('tiktok', $post['platforms'], true) ? ' #TikTok '.++$tiktok : '';
             $trend = filled($post['trend_signal'] ?? null) ? __('Trend:', [], $locale)." {$post['trend_signal']}. " : '';
@@ -62,16 +68,42 @@ class TopicsDocx
         return self::zip($body);
     }
 
+    /**
+     * The plan's posts in date order, each with its `day`: the day its post has on the calendar now (moved to a slot when
+     * it was filed, or by the team since), else the planned date for a post no longer there.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function posts(Report $report): array
+    {
+        $posts = $report->meta['posts'];
+        $onCalendar = $report->client->posts()->whereIn('name', array_filter(array_column($posts, 'name')))->whereNotNull('scheduled_at')->pluck('scheduled_at', 'name');
+        $posts = array_map(fn (array $post) => $post + ['day' => CarbonImmutable::parse($onCalendar[$post['name'] ?? ''] ?? $post['date'])->startOfDay()], $posts);
+        usort($posts, fn (array $a, array $b) => $a['day'] <=> $b['day']);
+
+        return $posts;
+    }
+
+    /** The month most of the posts fall in (the earlier one on a tie): a plan from 25 November to 24 December is December's. */
+    private static function mainMonth(Report $report): CarbonImmutable
+    {
+        $months = array_count_values(array_map(fn (array $post) => $post['day']->format('Y-m'), self::posts($report)));
+        arsort($months); // a stable sort, so on a tie the earlier month (posts are in date order) stays first
+
+        return CarbonImmutable::parse(array_key_first($months).'-01');
+    }
+
     private static function month(Report $report, string $locale): string
     {
         // "D MMMM" gives the genitive month in Greek (Νοεμβρίου), "MMMM" alone the nominative
-        return Str::after(CarbonImmutable::parse($report->meta['window']['start'])->locale($locale)->isoFormat('D MMMM'), ' ');
+        return Str::after(self::mainMonth($report)->locale($locale)->isoFormat('D MMMM'), ' ');
     }
 
     private static function run(string $text, bool $bold = false, ?int $size = null, ?string $color = null, ?string $font = null): string
     {
         $props = ($font ? "<w:rFonts w:ascii=\"{$font}\" w:hAnsi=\"{$font}\" w:cs=\"{$font}\"/>" : '').($bold ? '<w:b/>' : '').($color ? "<w:color w:val=\"{$color}\"/>" : '').($size ? "<w:sz w:val=\"{$size}\"/>" : '');
-        $lines = array_map(fn (string $line) => '<w:t xml:space="preserve">'.htmlspecialchars($line, ENT_XML1 | ENT_QUOTES, 'UTF-8').'</w:t>', explode("\n", str_replace("\r", '', $text)));
+        $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', str_replace("\r", '', $text)); // control characters XML does not allow: Word would not open the file
+        $lines = array_map(fn (string $line) => '<w:t xml:space="preserve">'.htmlspecialchars($line, ENT_XML1 | ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'</w:t>', explode("\n", $text));
 
         return "<w:r><w:rPr>{$props}</w:rPr>".implode('<w:br/>', $lines).'</w:r>';
     }

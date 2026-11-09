@@ -45,7 +45,7 @@ Route::post('/refresh', function () {
 Route::get('/refresh', fn () => view('refresh'))->middleware(['auth', 'can:admin']); // reachable even while the dashboard fails before a migration
 
 Route::middleware(['auth', LimitClients::class])->group(function () {
-    Route::resource('clients', ClientController::class)->except('show');
+    Route::resource('clients', ClientController::class)->except('show')->middlewareFor(['create', 'store'], 'can:add-clients');
     Route::get('/clients/{client}/assets', [AssetController::class, 'index'])->name('clients.assets');
     Route::get('/clients/{client}/grid', [ClientController::class, 'grid'])->name('clients.grid');
     Route::post('/clients/{client}/assets', [AssetController::class, 'store'])->name('assets.store'); // staff upload, one file or many

@@ -11,7 +11,7 @@ Authorization: Bearer so_…
 Accept: application/json
 ```
 
-120 calls a minute per token. A token limited to one client gets 403 on any other client's data. Revoke on the Staff page.
+120 calls a minute per token; call 121 gets `429` with `Retry-After` and `{"message": "Too many requests: 120 calls a minute per token. Try again in N seconds."}`. A token limited to one client gets 403 on any other client's data. Revoke on the Staff page.
 
 ## Endpoints
 
@@ -69,7 +69,7 @@ Events: `post.published`, `post.failed`, `post.manual_needed`. Each is a POST wi
 
 The same reads and writes as the API, as tools for Claude Code, Claude Desktop or any MCP client, so you can say "draft three posts for Almyra for next week" or "what did Blue Villa do in October" and let Claude call them. Nothing here publishes; a Draft waits for review and approval in the app.
 
-Endpoint: `POST https://<host>/mcp` (Streamable HTTP). Two ways in: **log in** (OAuth: Claude registers itself, sends you to the Social Ops login and an Allow page, and the tools then see the clients your login sees), or a **bearer token** from the Staff page (the same client scope as the API). Same rate limit either way.
+Endpoint: `POST https://<host>/mcp` (Streamable HTTP). Two ways in: **log in** (OAuth: Claude registers itself, sends you to the Social Ops login and an Allow page, and the tools then see the clients your login sees), or a **bearer token** from the Staff page (the same client scope as the API). Same rate limit either way (120 calls a minute per token or login; over it, HTTP 429 with a JSON-RPC error, code -32000). The connector's sign-up is limited per address: client registration 10 a minute and 100 a day, the Allow page 30 a minute.
 
 ```
 # claude.ai and the Claude desktop app: Settings → Connectors → Add custom connector

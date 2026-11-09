@@ -158,7 +158,7 @@
         <div class="grid gap-2 sm:grid-cols-2">
             @foreach ($rows($pillars) as $i => $row)
                 <div class="flex gap-2">
-                    <x-text-input name="p[pillars][{{ $i }}][name]" type="text" class="block w-full text-sm" :value="$row['name'] ?? ''" placeholder="{{ __('food and drink') }}" />
+                    <x-text-input name="p[pillars][{{ $i }}][name]" type="text" class="block w-full text-sm" :value="$row['name'] ?? ''" maxlength="{{ \App\Clients\ClientProfile::PILLAR_MAX }}" placeholder="{{ __('food and drink') }}" />
                     <x-text-input name="p[pillars][{{ $i }}][share]" type="number" min="0" max="100" class="w-20 text-sm" :value="$row['share'] ?? ''" placeholder="%" />
                 </div>
             @endforeach

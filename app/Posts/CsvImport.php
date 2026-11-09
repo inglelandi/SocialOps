@@ -68,10 +68,9 @@ final class CsvImport
             if (($row['pillar'] ?? '') !== '' && ! isset($client->profile['pillars'][$row['pillar']])) {
                 $errors[] = "Row $n: pillar must be one of ".implode(', ', array_keys($client->profile['pillars'])).' or empty.';
             }
-            try {
-                $date = Carbon::parse($row['date'].' '.(($row['time'] ?? '') ?: '10:00'));
-            } catch (\Throwable) {
-                $errors[] = "Row $n: date '{$row['date']}' or time '".($row['time'] ?? '')."' not understood (use 2027-05-12 and 18:00).";
+            $date = self::when($row['date'], $row['time'] ?? '');
+            if (! $date) {
+                $errors[] = "Row $n: date '{$row['date']}' or time '".($row['time'] ?? '')."' not understood (use 2027-05-12 or 12/05/2027, and 18:00).";
                 $date = now();
             }
             $rows[] = ['n' => $n, 'platforms' => $platforms, 'format' => $row['format'], 'pillar' => ($row['pillar'] ?? '') ?: null, 'date' => $date, 'row' => $row];
@@ -106,5 +105,28 @@ final class CsvImport
         });
 
         return ['imported' => count($rows), 'errors' => []];
+    }
+
+    /**
+     * A spreadsheet's date and time: ISO dates (2027-05-12) as they are, every other date in numbers day first, as Excel in a
+     * Greek locale saves them (05/12/2027, 5.12.2027 and 05-12-27 are 5 December); the time from its own cell, else after
+     * the date in the same cell, else 10:00. Null for anything else, a day that does not exist (31/02) included.
+     */
+    public static function when(string $date, string $time = ''): ?Carbon
+    {
+        [$day, $at] = array_pad(preg_split('/\s+/', trim($date), 2), 2, ''); // "05/12/2027 18:00" in one cell
+        if (preg_match('/^(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})$/', $day, $m)) { // year first: 2027-05-12, 2027/05/12
+            [, $y, $mo, $d] = $m;
+        } elseif (preg_match('/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4}|\d{2})$/', $day, $m)) {
+            [, $d, $mo, $y] = $m;
+            $y = strlen($y) === 2 ? '20'.$y : $y;
+        } else {
+            return null;
+        }
+        if (! checkdate((int) $mo, (int) $d, (int) $y) || ! preg_match('/^([01]?\d|2[0-3])[:.]([0-5]\d)(?:[:.]([0-5]\d))?$/', trim($time) ?: $at ?: '10:00', $t)) {
+            return null;
+        }
+
+        return Carbon::create((int) $y, (int) $mo, (int) $d, (int) $t[1], (int) $t[2], (int) ($t[3] ?? 0));
     }
 }
