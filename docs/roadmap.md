@@ -62,3 +62,4 @@ Exit: the team plans, briefs, approves and tracks every client's month in Social
 - [x] Assets page rework: the team uploads many photos and videos at once (progress per file, batch pillar and tags), the other intake ways and the Reel tool folded, filters (search, kind, pillar, used or not), preview, delete that names the posts using the file
 - [x] Reference folder per client on Google Drive (Files tab, D23): the previous posts and the reference files read as text, hourly, and handed to the planner in `get-planning-brief` and `content:plan`
 - [x] Posts tied to a day keep their day: Claude's `fixed_date` flag in the plan, the holiday-name backup, the client's usual slot time (D24)
+- [x] Designs in the reference folder (D25): photos, graphics, PDFs, .ai/.psd/.indd/.eps and videos described once each by Claude through the connector from Drive's preview (never stored), 25 an hour, and handed to the planner as "Past designs"; the folder walked 6 levels deep, 1000 files

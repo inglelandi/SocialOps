@@ -3,6 +3,7 @@
 namespace App\Planning;
 
 use App\Models\Client;
+use App\Models\ClientDocument;
 use App\Models\Post;
 use App\Models\Report;
 use App\Models\User;
@@ -16,13 +17,17 @@ use Illuminate\Support\Collection;
 /**
  * The work the team queued for the scheduled Claude worker (list-claude-jobs), which runs once an hour: plan requests
  * ("Queue for Claude" on the client page, `reports` rows of kind claude_job, the request in `meta`) and caption requests
- * (posts ticked "Ask Claude to write the captions", `settings.ask_claude`, ticked at `settings.ask_claude_at`).
+ * (posts ticked "Ask Claude to write the captions", `settings.ask_claude`, ticked at `settings.ask_claude_at`), and the
+ * designs of the clients' Drive folders still to be described (designs(), DESIGNS_PER_RUN an hour, oldest first).
  * The client page, the Jobs page and the dashboard show it; `claude:check-queue` tells Slack once about a late request.
  */
 final class ClaudeQueue
 {
     /** A request older than this has missed at least one hourly run: the dashboard and Slack say so. */
     public const LATE_HOURS = 2;
+
+    /** Designs list-claude-jobs hands the worker per call: an archive is described a batch an hour. */
+    public const DESIGNS_PER_RUN = 25;
 
     /** What makes two plan requests the same request. */
     public const PLAN_FIELDS = ['posts', 'from', 'days', 'instruction'];
@@ -42,6 +47,14 @@ final class ClaudeQueue
     public static function captions(?User $user = null): Builder
     {
         $query = Post::query()->where('settings->ask_claude', true)->whereNot('state', PostState::Published);
+
+        return $user ? $user->restrict($query) : $query;
+    }
+
+    /** Design files waiting for Claude's description (a preview, no description yet), of the login's clients when one is given. */
+    public static function designs(?User $user = null): Builder
+    {
+        $query = ClientDocument::query()->where('kind', 'design')->whereNull('text')->whereNull('error');
 
         return $user ? $user->restrict($query) : $query;
     }

@@ -5,6 +5,7 @@ namespace App\Mcp\Tools;
 use App\Http\Requests\PostRequest;
 use App\Models\Client;
 use App\Models\Post;
+use App\Planning\ClaudeQueue;
 use App\Planning\ClientReference;
 use App\Planning\PillarQuota;
 use App\Planning\PlanRequest;
@@ -18,7 +19,7 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Step 1 of planning a batch for a client: the brief you plan from. It holds the brand profile, the pillar quota for the batch, the publishing window with its key dates, holidays and posting slots, the recent posts not to repeat, the client\'s own Drive files (the posts it published before Social Ops, not to repeat, and its reference files, as facts), the formats and the caption rules. Research the current trends yourself (the last30days skill or web search), plan the posts, write the captions, then hand everything to save-plan. Nothing is published.')]
+#[Description('Step 1 of planning a batch for a client: the brief you plan from. It holds the brand profile, the pillar quota for the batch, the publishing window with its key dates, holidays and posting slots, the recent posts not to repeat, the client\'s own Drive files (the posts it published before Social Ops, not to repeat, its reference files, as facts, and its past designs as Claude described them from the images), the formats and the caption rules. Research the current trends yourself (the last30days skill or web search), plan the posts, write the captions, then hand everything to save-plan. Nothing is published.')]
 class GetPlanningBrief extends Tool
 {
     use ScopedToToken;
@@ -52,6 +53,7 @@ class GetPlanningBrief extends Tool
             'recent' => $client->recentTopics(),
             'previous_posts' => $reference['previous_posts'],
             'reference' => $reference['reference'],
+            'designs' => $reference['designs'],
         ]);
 
         $brief = [
@@ -77,21 +79,27 @@ class GetPlanningBrief extends Tool
         return Response::json($brief);
     }
 
-    /** A folder is linked but gave the brief nothing: say so, so Claude does not take "none" for "the client has no files". */
+    /**
+     * A folder is linked but gave the brief nothing, or part of it is still waiting: say so, so Claude does not take "none"
+     * for "the client has no files", nor the designs described so far for all of them.
+     */
     private static function referenceNote(Client $client, array $reference): ?string
     {
         if ($reference['folder'] === null) {
             return null;
         }
+        $notes = [];
         $error = $client->accounts()->where('platform', 'drive_docs')->first()?->meta['error'] ?? null;
         if ($error) {
-            return "The client's Drive folder \"{$reference['folder']['name']}\" could not be read: {$error}. The two file sections above hold what was read before, if anything.";
+            $notes[] = "The client's Drive folder \"{$reference['folder']['name']}\" could not be read: {$error}. The file sections above hold what was read before, if anything.";
+        } elseif ($reference['previous_posts'] === '' && $reference['reference'] === '' && $reference['designs'] === '' && $reference['designs_waiting'] === 0) {
+            $notes[] = "The client's Drive folder \"{$reference['folder']['name']}\" is linked but nothing has been read from it yet: no readable file or design, the first read is still running, or every file is marked Not used. Plan from the profile.";
         }
-        if ($reference['previous_posts'] === '' && $reference['reference'] === '') {
-            return "The client's Drive folder \"{$reference['folder']['name']}\" is linked but nothing has been read from it yet: no readable file (PDFs are not read), the first read is still running, or every file is marked Not used. Plan from the profile.";
+        if ($reference['designs_waiting'] > 0) {
+            $notes[] = "{$reference['designs_waiting']} designs in the client's Drive folder are still waiting to be described (the designs of list-claude-jobs, ".ClaudeQueue::DESIGNS_PER_RUN." an hour); the past designs section holds the {$reference['designs_described']} described so far.";
         }
 
-        return null;
+        return $notes ? implode(' ', $notes) : null;
     }
 
     /** The profile's hashtag rule as a sentence: none when it allows 0 and names none to always use, no empty lists read out. */

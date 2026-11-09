@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Models\Client;
+use App\Models\ClientDocument;
 use App\Models\Comment;
 use App\Models\Post;
 use Illuminate\Database\Eloquent\Builder;
@@ -33,6 +34,13 @@ trait ScopedToToken
     {
         return Post::with('variants', 'assets')->whereIn('client_id', $this->clients()->select('id'))->find((int) $id)
             ?? throw ValidationException::withMessages(['post' => "No post $id within this token's reach."]);
+    }
+
+    /** A design file of a client's Drive folder (kind design, with a preview), within reach. */
+    protected function design(mixed $id): ClientDocument
+    {
+        return ClientDocument::with('client')->whereIn('client_id', $this->clients()->select('id'))->where('kind', 'design')->whereNull('error')->find((int) $id)
+            ?? throw ValidationException::withMessages(['document' => "No design $id within this token's reach (see the designs of list-claude-jobs)."]);
     }
 
     protected function comment(mixed $id): Comment

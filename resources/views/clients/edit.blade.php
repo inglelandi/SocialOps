@@ -128,6 +128,9 @@
                                     <a href="{{ route('clients.files', $client) }}" class="font-medium text-gray-900 hover:text-brand-600">
                                         @if ($documents)
                                             {{ __('Claude also reads :n files from the client\'s Drive folder (:m with previous posts).', ['n' => $documents['read'], 'm' => $documents['previous']]) }}
+                                            @if ($documents['designs'] || $documents['waiting'])
+                                                {{ __('And :n past designs it described, :m still waiting.', ['n' => $documents['designs'], 'm' => $documents['waiting']]) }}
+                                            @endif
                                         @else
                                             {{ __('Link the client\'s Drive folder on the Files tab, so Claude reads the previous posts and the reference files.') }}
                                         @endif
