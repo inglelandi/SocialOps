@@ -393,7 +393,8 @@ test('the Files tab lists the designs with their preview, description or state, 
 
     $html = $this->actingAs($this->user)->get(route('clients.files', $this->client))->assertOk()->getContent();
     expect($html)->toContain('Last read 09-11-2026 10:00, 0 documents and 4 designs')
-        ->toContain('Files<span class="ml-1 rounded-full bg-brand-100 px-1.5 text-xs text-brand-700">1</span>') // the tab counts the documents read, not the designs
+        ->toContain('Google Drive folder<span class="ml-auto rounded-full bg-brand-100 px-1.5 text-xs text-brand-700">1</span>') // the folder counts the documents read, the designs have their own
+        ->toContain('Designs<span class="ml-auto rounded-full bg-brand-100 px-1.5 text-xs text-brand-700">4</span>')
         ->toContain('Designs</h3>')->toContain('1 of 2 described; Claude describes up to 25 an hour.')
         ->toContain('<img src="'.route('clients.files.preview', [$this->client, $done]).'" loading="lazy"')
         ->toContain('<summary class="cursor-pointer text-gray-900">Halloween party poster.</summary>')->toContain('Text on it: HALLOWEEN NIGHT')
@@ -431,9 +432,9 @@ test('the Files tab lists the designs with their preview, description or state, 
     $limited = User::factory()->create(['client_ids' => [$other->id]]);
     $this->actingAs($limited)->get(route('clients.files.preview', [$this->client, $done]))->assertForbidden();
 
-    // the client page's MCP box counts the designs apart from the files
+    // the Plan with Claude tab's MCP box counts the designs apart from the files
     config()->set('features.claude_api', false);
-    $this->actingAs($this->user)->get(route('clients.edit', $this->client))->assertOk()
+    $this->actingAs($this->user)->get(route('clients.planner', $this->client))->assertOk()
         ->assertSee('Claude also reads 1 files from the client&#039;s Drive folder (0 with previous posts).', false)->assertSee('And 1 past designs it described, 1 still waiting.');
 
     // in Greek

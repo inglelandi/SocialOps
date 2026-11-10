@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 
 beforeEach(function () {
-    $this->staff = User::factory()->create();
+    $this->staff = User::factory()->create(['is_admin' => true]); // the Staff page, where tokens are made, is for admins
     $this->a = Client::factory()->create(['name' => 'Almyra', 'code' => 'ALMYRA']);
     $this->b = Client::factory()->create(['name' => 'Blue Villa']);
 });

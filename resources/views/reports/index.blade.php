@@ -43,7 +43,7 @@
                                 <td class="px-6 py-2.5"><a href="{{ route('reports.show', $report) }}" class="font-medium text-gray-900 hover:text-brand-600">{{ $report->title }}</a></td>
                             </tr>
                         @empty
-                            <tr><td colspan="3" class="px-6 py-4"><x-empty-state icon="chart-bar" :action="__('Plan with Claude')" :href="route('clients.edit', $client)">{{ $noReports }}</x-empty-state></td></tr>
+                            <tr><td colspan="3" class="px-6 py-4"><x-empty-state icon="chart-bar" :action="__('Plan with Claude')" :href="route('clients.planner', $client)">{{ $noReports }}</x-empty-state></td></tr>
                         @endforelse
                     </tbody>
                 </table>

@@ -212,7 +212,7 @@ test('inbox:pull reads the slideshow every hour, the client page says Claude rea
     Queue::assertPushed(SyncClientDocuments::class, fn (SyncClientDocuments $job) => $job->account->is($account));
 
     config()->set('features.claude_api', false);
-    $this->actingAs($this->user)->get(route('clients.edit', $this->client))->assertOk()->assertSee('And the posts slideshow “Dokos Home”.', false);
+    $this->actingAs($this->user)->get(route('clients.planner', $this->client))->assertOk()->assertSee('And the posts slideshow “Dokos Home”.', false);
 
     $limited = User::factory()->create(['client_ids' => [Client::factory()->create()->id]]);
     $this->actingAs($limited)->post(route('clients.files.slideshow', $this->client), ['slideshow' => SLIDES_ID])->assertForbidden();

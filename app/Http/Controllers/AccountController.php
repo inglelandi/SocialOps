@@ -91,16 +91,16 @@ class AccountController extends Controller
         return redirect()->route('clients.accounts', $account->client_id)->with('status', __(':n posts imported', ['n' => $n]));
     }
 
-    /** Disconnect an account; also unlinks an intake folder (Drive, Dropbox, Canva: back to the assets page), the reference folder or the posts slideshow (back to the Files tab, what was read goes with it). */
+    /** Disconnect an account; also unlinks an intake folder (Drive, Dropbox, Canva), the reference folder, the posts slideshow or the product feed (what was read goes with it): back to that section of the Files page. */
     public function destroy(Account $account): RedirectResponse
     {
         $account->delete();
 
         return match ($account->platform) {
-            'drive_docs' => redirect()->route('clients.files', $account->client_id)->with('status', __('Folder unlinked, its files are forgotten here')),
-            'drive_slides' => redirect()->route('clients.files', $account->client_id)->with('status', __('Slideshow unlinked, its text is forgotten here')),
-            'product_feed' => redirect()->route('clients.files', $account->client_id)->with('status', __('Product feed unlinked, its products are forgotten here')),
-            'drive', 'dropbox', 'canva' => redirect()->route('clients.assets', $account->client_id)->with('status', 'account-disconnected'),
+            'drive_docs' => redirect()->route('clients.files', $account->client_id)->with('status', __('Folder unlinked, its files are forgotten here'))->with('tab', 'folder'),
+            'drive_slides' => redirect()->route('clients.files', $account->client_id)->with('status', __('Slideshow unlinked, its text is forgotten here'))->with('tab', 'slideshow'),
+            'product_feed' => redirect()->route('clients.files', $account->client_id)->with('status', __('Product feed unlinked, its products are forgotten here'))->with('tab', 'feed'),
+            'drive', 'dropbox', 'canva' => redirect()->route('clients.assets', $account->client_id)->with('status', 'account-disconnected')->with('tab', 'sources'),
             default => redirect()->route('clients.accounts', $account->client_id)->with('status', 'account-disconnected'),
         };
     }

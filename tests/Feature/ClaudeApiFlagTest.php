@@ -21,7 +21,7 @@ test('the Claude buttons and routes do not exist while the API flag is off; the 
     $html = $staff->get(route('posts.edit', $post))->assertOk()->getContent();
     expect($html)->not->toContain('Draft captions with Claude')->not->toContain('Change with Claude')->not->toContain('Shorten with Claude');
 
-    $html = $staff->get(route('clients.edit', $client))->assertOk()->getContent();
+    $html = $staff->get(route('clients.planner', $client))->assertOk()->getContent();
     expect($html)->toContain('get-planning-brief')->toContain('save-plan')->toContain('client &quot;'.$client->slug.'&quot;')
-        ->not->toContain(route('clients.plan', $client))->not->toContain(route('clients.draft', $client));
+        ->not->toContain('action="'.route('clients.plan', $client).'"')->not->toContain(route('clients.draft', $client)); // the tab itself is the same address, read with GET
 });

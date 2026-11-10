@@ -87,12 +87,12 @@ test('the Files tab links a Drive folder after checking it as the service accoun
     $this->actingAs($this->user)->get(route('clients.files', $this->client))->assertOk()
         ->assertSee('Share the folder with ops@social-ops.iam.gserviceaccount.com (Viewer is enough) before linking it.')->assertSee('What Claude reads when it plans this client')->assertDontSee('Use the photo inbox folder');
 
-    // the photo inbox folder of the assets page is offered with one click, and the assets page points to the Files tab
+    // the photo inbox folder is offered with one click, and its box points to the reference folder's section
     $this->client->accounts()->create(['platform' => 'drive', 'external_id' => 'root1', 'name' => 'Almyra photos', 'access_token' => '', 'meta' => ['folder' => 'root1', 'folder_name' => 'Almyra photos']]);
     $this->actingAs($this->user)->get(route('clients.files', $this->client))->assertOk()
         ->assertSee('Use the photo inbox folder “Almyra photos”')->assertSee('<input type="hidden" name="folder" value="root1">', false);
     $this->actingAs($this->user)->get(route('clients.assets', $this->client))->assertOk()
-        ->assertSee('Documents in this folder (previous posts, menus, briefs) are read on the Files tab.')->assertSee(route('clients.files', $this->client));
+        ->assertSee('Its documents (previous posts, menus, briefs) can be read for Claude too, under Google Drive folder.')->assertSee('href="#folder"', false);
 
     Queue::fake();
     Http::fake([
@@ -322,7 +322,7 @@ test('the Files tab lists the files with their kind, changes a kind for good, co
     $html = $this->actingAs($this->user)->get(route('clients.files', $this->client))->assertOk()->getContent();
     expect($html)->toContain('Last read 09-11-2026 10:00, 3 files')->toContain('Θεματολογία 2026')->toContain('Facts/2027')->toContain('13 characters read')->toContain('1,234 characters read')
         ->toContain('Old Office format: save it as .docx/.xlsx')->toContain('01-11-2026')->toContain('20-10-2026')
-        ->toContain('Files<span')->toContain('>2</span>') // two files read, the old .doc not
+        ->toContain('Google Drive folder<span class="ml-auto rounded-full bg-brand-100 px-1.5 text-xs text-brand-700">2</span>') // two files read, the old .doc not
         ->toContain('<option value="previous_posts" selected>Previous posts</option>')->toContain('<option value="reference" selected>Reference</option>')->toContain('Not used')
         ->not->toContain('Other.docx');
 
@@ -333,10 +333,10 @@ test('the Files tab lists the files with their kind, changes a kind for good, co
     $this->actingAs($this->user)->patch(route('clients.files.kind', [$this->client, $foreign]), ['kind' => 'ignored'])->assertNotFound();
     expect($foreign->fresh()->kind)->toBe('reference');
 
-    // the client page's MCP box says what Claude reads
+    // the Plan with Claude tab's MCP box says what Claude reads
     config()->set('features.claude_api', false);
-    $this->actingAs($this->user)->get(route('clients.edit', $this->client))->assertOk()->assertSee('Claude also reads 2 files from the client&#039;s Drive folder (2 with previous posts).', false)->assertSee(route('clients.files', $this->client));
-    $this->actingAs($this->user)->get(route('clients.edit', Client::factory()->create()))->assertOk()->assertSee('Link the client&#039;s Drive folder on the Files tab', false);
+    $this->actingAs($this->user)->get(route('clients.planner', $this->client))->assertOk()->assertSee('Claude also reads 2 files from the client&#039;s Drive folder (2 with previous posts).', false)->assertSee(route('clients.files', $this->client));
+    $this->actingAs($this->user)->get(route('clients.planner', Client::factory()->create()))->assertOk()->assertSee('Link the client&#039;s Drive folder on the Files page', false);
 
     // a login limited to another client sees nothing of this one
     $limited = User::factory()->create(['client_ids' => [$other->id]]);
@@ -346,6 +346,6 @@ test('the Files tab lists the files with their kind, changes a kind for good, co
     $this->actingAs($limited)->delete(route('accounts.destroy', $folder))->assertForbidden();
     $this->actingAs($limited)->get(route('clients.files', $other))->assertOk()->assertSee('Other.docx');
 
-    // in Greek the Assets tab reads "Υλικό", so the Files tab can read "Αρχεία"
-    $this->actingAs(User::factory()->create(['locale' => 'el']))->get(route('clients.files', $this->client))->assertOk()->assertSee('Υλικό')->assertSee('Προηγούμενες αναρτήσεις')->assertSee('Παλιά μορφή Office');
+    // in Greek: one Files tab ("Αρχεία") for the photos and what Claude reads
+    $this->actingAs(User::factory()->create(['locale' => 'el']))->get(route('clients.files', $this->client))->assertOk()->assertSee('Αρχεία')->assertSee('Φωτογραφίες και βίντεο')->assertSee('Τι διαβάζει το Claude')->assertSee('Προηγούμενες αναρτήσεις')->assertSee('Παλιά μορφή Office');
 });

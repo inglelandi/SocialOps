@@ -17,12 +17,17 @@
             <x-nav-link :href="route('today')" :active="request()->routeIs('today')" icon="device-phone-mobile">{{ __('Post today') }}@if ($toPost)<span class="ml-auto rounded-full bg-brand-500 px-2 py-0.5 text-xs font-semibold text-white" title="{{ __('Posts still to post today') }}">{{ $toPost }}</span>@endif</x-nav-link>
             <x-nav-link :href="route('clients.index')" :active="request()->routeIs('clients.index', 'clients.create')" icon="building-storefront">{{ __('Clients') }}</x-nav-link>
             <x-nav-link :href="route('jobs.index')" :active="request()->routeIs('jobs.*')" icon="queue-list">{{ __('Jobs') }}</x-nav-link>
-            <x-nav-link :href="route('staff.index')" :active="request()->routeIs('staff.*')" icon="users">{{ __('Staff') }}</x-nav-link>
-            @can('admin')
-                <x-nav-link :href="route('settings.edit')" :active="request()->routeIs('settings.*')" icon="cog-6-tooth">{{ __('Settings') }}</x-nav-link>
-                <x-nav-link :href="url('/refresh')" icon="arrow-path">{{ __('Refresh after update') }}</x-nav-link>
-            @endcan
         </div>
+
+        @can('admin')
+            {{-- admins only: the logins and API tokens, the .env settings, the migrations after a pull --}}
+            <p class="mb-1 mt-6 px-4 text-xs font-semibold uppercase tracking-wide text-neutral-400">{{ __('Admin') }}</p>
+            <div class="space-y-0.5">
+                <x-nav-link :href="route('staff.index')" :active="request()->routeIs('staff.*')" icon="users">{{ __('Staff') }}</x-nav-link>
+                <x-nav-link :href="route('settings.edit')" :active="request()->routeIs('settings.*')" icon="cog-6-tooth">{{ __('Settings') }}</x-nav-link>
+                <x-nav-link :href="url('/refresh')" :active="request()->is('refresh')" icon="arrow-path">{{ __('Refresh after update') }}</x-nav-link>
+            </div>
+        @endcan
 
         @if ($clients->isNotEmpty())
             <p class="mb-1 mt-6 px-4 text-xs font-semibold uppercase tracking-wide text-neutral-400">{{ __('Clients') }}</p>

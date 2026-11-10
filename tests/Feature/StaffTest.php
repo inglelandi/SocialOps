@@ -18,10 +18,16 @@ test('setup creates the first login and then disappears', function () use ($inpu
     $this->post('/setup', ['email' => 'x@example.com'] + $input)->assertNotFound();
 });
 
-test('staff can add and remove logins but not their own', function () use ($input) {
-    $me = User::factory()->create();
+test('admins add and remove logins but not their own; the Staff page and its link are for admins only', function () use ($input) {
+    $me = User::factory()->create(['is_admin' => true]);
+    $staff = User::factory()->create(['name' => 'Eleni']);
 
     $this->get('/staff')->assertRedirect('/login');
+    $this->actingAs($staff)->get('/staff')->assertForbidden();
+    $this->actingAs($staff)->post('/staff', $input)->assertForbidden();
+    $this->actingAs($staff)->post('/staff/tokens', ['name' => 'Sheet'])->assertForbidden();
+    $this->actingAs($staff)->get('/dashboard')->assertOk()->assertDontSee(route('staff.index'))->assertDontSee('Refresh after update')->assertDontSee('>Admin<', false);
+    $this->actingAs($me)->get('/dashboard')->assertOk()->assertSeeInOrder(['Jobs', 'Admin', 'Staff', 'Settings', 'Refresh after update']);
     $this->actingAs($me)->post('/staff', ['password' => 'short'] + $input)->assertSessionHasErrors('password');
     $this->actingAs($me)->post('/staff', $input)->assertRedirect('/staff');
 
@@ -29,7 +35,7 @@ test('staff can add and remove logins but not their own', function () use ($inpu
     $this->actingAs($me)->get('/staff')->assertOk()->assertSee('Panos')->assertSee('you');
     $this->actingAs($me)->delete("/staff/{$me->id}")->assertStatus(422);
     $this->actingAs($me)->delete("/staff/{$other->id}")->assertRedirect('/staff');
-    expect(User::count())->toBe(1);
+    expect(User::count())->toBe(2);
 });
 
 test('the dashboard refresh button migrates and rebuilds the caches', function () {

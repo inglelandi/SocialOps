@@ -46,17 +46,17 @@ Removed on 2026-11-04 (D17): the platforms are Instagram, Facebook, TikTok and L
 
 ## 3b. Google Drive folders (optional) → `GOOGLE_SERVICE_ACCOUNT_JSON`
 
-Lets a client drop photos and videos in a shared Google Drive folder; Social Ops files them in the client's inbox every hour (assets page → Google Drive box). The Drive API is free, and a service account needs no consent screen, no Google review and no token renewal.
+Lets a client drop photos and videos in a shared Google Drive folder; Social Ops files them in the client's inbox every hour (Files → Other ways to add files → Google Drive). The Drive API is free, and a service account needs no consent screen, no Google review and no token renewal.
 
 1. In a Google Cloud project of the agency: **APIs & Services → Library** → enable *Google Drive API*.
 2. **IAM & Admin → Service accounts → Create service account**: name `social-ops-drive`, no roles, **Done**.
 3. Open it → **Keys → Add key → Create new key → JSON**. The file downloads once. It is a credential: keep it out of the repository and out of `public/`.
 4. Upload it to the server next to the app (not inside it), point `.env` at it, then **Refresh after update** at `/refresh` (linked in the side navigation for admins) (or `php artisan config:clear`).
-5. Per client, on the assets page: share the folder (the client's own, or one you make in the agency's Drive and share with the client) with the address the box shows, *Viewer* is enough; paste the folder link; **Watch folder**. The folder itself is read, not its subfolders; one folder per client; a file is filed once, by its Drive id.
+5. Per client, on the Files tab under *Other ways to add files*: share the folder (the client's own, or one you make in the agency's Drive and share with the client) with the address the box shows, *Viewer* is enough; paste the folder link; **Watch folder**. The folder itself is read, not its subfolders; one folder per client; a file is filed once, by its Drive id.
 
-The same service account reads the reference folders of the **Files** tab (the client's previous posts, menus, briefs: what Claude plans from). Share the agency's parent "Clients" folder with the address once, and every client folder under it is readable: on each client's Files tab paste the client's folder link (or press the button that reuses the photo inbox folder) and **Link**. There the subfolders are read too (six levels, 1000 files at most); Word, Excel, PowerPoint, Google Docs, Sheets and Slides and text files are read as text, and photos, graphics (Illustrator, Photoshop, InDesign, EPS), PDFs and videos are listed as designs, which the hourly Claude worker describes through the connector from Drive's preview, 25 an hour, without anything but its text being kept (D25).
+The same service account reads the reference folders of the **Files** tab (*Google Drive folder*, under *What Claude reads*) (the client's previous posts, menus, briefs: what Claude plans from). Share the agency's parent "Clients" folder with the address once, and every client folder under it is readable: on each client's Files tab paste the client's folder link (or press the button that reuses the photo inbox folder) and **Link**. There the subfolders are read too (six levels, 1000 files at most); Word, Excel, PowerPoint, Google Docs, Sheets and Slides and text files are read as text, and photos, graphics (Illustrator, Photoshop, InDesign, EPS), PDFs and videos are listed as designs, which the hourly Claude worker describes through the connector from Drive's preview, 25 an hour, without anything but its text being kept (D25).
 
-At the top of the Files tab, the **Posts slideshow** is the team's Google Slides file with the posts that will go up for that client (one slide per post with its date and caption, then ideas): share it with the same address (Viewer is enough), or set it to anyone with the link, paste its link and **Link**. It is read at once, every hour and on **Read it now**, and Claude plans around it (D26). A file owned by a colleague's own Google account must be shared by that colleague.
+On the Files tab, the **Posts slideshow** is the team's Google Slides file with the posts that will go up for that client (one slide per post with its date and caption, then ideas): share it with the same address (Viewer is enough), or set it to anyone with the link, paste its link and **Link**. It is read at once, every hour and on **Read it now**, and Claude plans around it (D26). A file owned by a colleague's own Google account must be shared by that colleague.
 
 Under it, the **Product feed** is the XML file the client's e-shop makes for Skroutz, BestPrice, Google Shopping or Facebook (whoever runs the e-shop has its link; Skroutz asks every shop for it). Paste the link and **Link**: it is read in the queue, then every day at 05:40 and on **Read the feed now**, and Claude links real, in-stock products from it in the posts it plans (D27). It needs no service account and no key: the link is public by design.
 
@@ -67,17 +67,32 @@ GOOGLE_SERVICE_ACCOUNT_JSON=/var/www/vhosts/AGENCY-DOMAIN/socialops-drive.json
 
 ## 3c. Dropbox folders (optional) → `DROPBOX_APP_KEY`
 
-Same idea with Dropbox: the client shares a folder with the agency's Dropbox (or you make one and share it with the client), and every hour its new photos and videos land in the client's inbox (assets page → Dropbox box). Free; a Dropbox app in development status serves the agency's own account without Dropbox's review.
+Same idea with Dropbox: the client shares a folder with the agency's Dropbox (or you make one and share it with the client), and every hour its new photos and videos land in the client's inbox (Files → Other ways to add files → Dropbox). Free; a Dropbox app in development status serves the agency's own account without Dropbox's review.
 
 1. https://www.dropbox.com/developers/apps → **Create app**: *Scoped access*, *Full Dropbox* (so folders shared with the agency are visible wherever they sit), name `Social Ops`.
 2. **Permissions** tab: tick `account_info.read`, `files.metadata.read`, `files.content.read`, **Submit**. Nothing is written to Dropbox.
 3. **Settings** tab: *Redirect URIs* add `https://YOUR-DOMAIN/dropbox/callback`; copy the **App key** (no secret is needed, the login uses PKCE). The app can stay in *Development* status: it serves the agency's own account.
-4. Per client, on the assets page: **Connect Dropbox** (log in with the agency's Dropbox), then type the folder's path, for example `/Clients/Almyra` (a folder the client shared sits at the top level, `/Almyra photos`), **Watch folder**. The folder itself is read, not its subfolders; a file is filed once, by its Dropbox id.
+4. Per client, on the Files tab under *Other ways to add files*: **Connect Dropbox** (log in with the agency's Dropbox), then type the folder's path, for example `/Clients/Almyra` (a folder the client shared sits at the top level, `/Almyra photos`), **Watch folder**. The folder itself is read, not its subfolders; a file is filed once, by its Dropbox id.
 
 `.env`:
 ```
 DROPBOX_APP_KEY=…
 ```
+
+## 3d. Canva designs (optional) → `CANVA_CLIENT_ID`, `CANVA_CLIENT_SECRET`
+
+Brings finished designs from the agency's Canva into a client's photos and videos (PNG or JPG per page, or MP4). Read only: nothing is written to Canva. This is the app's own import; Claude's Canva connector in claude.ai needs nothing here.
+
+1. Sign in to https://www.canva.com/developers/integrations with the agency's Canva account (the one that holds the designs) and **Create an integration**. Canva may ask you to turn on two-step verification first.
+2. **Scopes**: tick `design:meta:read`, `design:content:read` and `profile:read`.
+3. **Authentication**: add the redirect URL `https://YOUR-DOMAIN/canva/callback`.
+4. Copy the **Client ID**; **Generate secret** and copy it at once (Canva shows it once).
+5. Paste both on the Settings page (admins), or in `.env`:
+```
+CANVA_CLIENT_ID=…
+CANVA_CLIENT_SECRET=…
+```
+6. Per client, on the Files tab under *Other ways to add files*: **Connect Canva**, then **Find** and tick the designs to import.
 
 ## 4. Claude → `ANTHROPIC_API_KEY`
 
@@ -133,7 +148,7 @@ Any other Linux server works the same with nginx + PHP-FPM, a database, cron for
 
 ## 5a. ffmpeg for Reels (optional)
 
-The "Make a Reel" box on the assets page cuts ticked clips into one vertical Reel with ffmpeg, which runs on the server. Install it once: `apt install ffmpeg` on Ubuntu or Debian, RPM Fusion's `ffmpeg` on AlmaLinux; check with `ffmpeg -version`. The queue task runs from cron with a short PATH, so put the full path in `.env` (`which ffmpeg` prints it):
+The "Make a Reel" section of the Files tab cuts ticked clips into one vertical Reel with ffmpeg, which runs on the server. Install it once: `apt install ffmpeg` on Ubuntu or Debian, RPM Fusion's `ffmpeg` on AlmaLinux; check with `ffmpeg -version`. The queue task runs from cron with a short PATH, so put the full path in `.env` (`which ffmpeg` prints it):
 
 ```
 FFMPEG_PATH=/usr/bin/ffmpeg

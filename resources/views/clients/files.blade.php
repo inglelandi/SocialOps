@@ -3,237 +3,179 @@
         <h2 class="text-2xl font-semibold tracking-tight text-gray-900">{{ $client->name }}: {{ __('files') }}</h2>
     </x-slot>
 
-    <div class="py-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-            @if (session('status'))
-                <p class="flex items-center gap-1.5 text-sm font-medium text-green-700"><x-icon name="check-circle" class="h-5 w-5" />{{ session('status') }}.</p>
+    @php
+        $pillars = array_keys($client->profile['pillars']);
+        $pillarName = fn (?string $pillar) => $pillar ? ucfirst(str_replace('_', ' ', $pillar)) : __('No pillar');
+        $sources = \App\Models\Asset::sources();
+        $keep = collect(request()->only(\App\Http\Controllers\AssetController::FILTERS))->filter(fn ($v) => is_string($v) && $v !== ''); // the grid's filters, carried through a delete
+        $mb = fn (int $bytes) => $bytes < 1048576 ? max(1, round($bytes / 1024)).' KB' : number_format($bytes / 1048576, 1).' MB';
+        $btn = 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-400 bg-white px-3.5 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50';
+        $connected = array_keys(array_filter(['Google Drive' => $drive, 'Dropbox' => $dropbox?->meta['folder'] ?? null, 'Canva' => $canva]));
+        // the side list: the photos and videos and the ways in, then what Claude reads when it plans this client
+        $groups = [
+            [null, [
+                'media' => [__('Photos and videos'), 'photo', $assetTotal],
+                'sources' => [__('Other ways to add files'), 'cloud-arrow-down', null],
+                'reel' => [__('Make a Reel'), 'film', null],
+            ]],
+            [__('What Claude reads'), [
+                'slideshow' => [__('Posts slideshow'), 'presentation-chart-bar', null],
+                'folder' => [__('Google Drive folder'), 'folder', $documents->where('chars', '>', 0)->count()],
+                'designs' => [__('Designs'), 'swatch', $designTotal],
+                'feed' => [__('Product feed'), 'tag', $productTotal],
+            ]],
+        ];
+        // the section to open: the one the last action or error was about, else the address's #section (the script), else the one opened last
+        $open = session('tab') ?? match (true) {
+            $errors->upload->any() => 'media',
+            $errors->reel->any() => 'reel',
+            $errors->hasAny(['canva', 'drive', 'dropbox']) || request()->has('canva') || in_array(session('status'), ['canva-connected', 'dropbox-connected'], true) => 'sources',
+            $errors->has('slideshow') => 'slideshow',
+            $errors->has('folder') => 'folder',
+            $errors->has('feed') || request()->has('product') => 'feed',
+            request()->boolean('all') => 'designs',
+            request()->hasAny(\App\Http\Controllers\AssetController::FILTERS) => 'media',
+            default => $section,
+        };
+        $status = session('status');
+    @endphp
+
+    <div class="py-6" x-data="filesPage(@js(['tabs' => collect($groups)->flatMap(fn ($group) => array_keys($group[1]))->all(), 'open' => $open]))" x-on:hashchange.window="fromHash()" x-on:keydown.escape.window="preview = null">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            @if ($status)
+                {{-- a code (asset-deleted) is shown as words; a sentence as it is --}}
+                <p class="mb-4 flex items-center gap-1.5 text-sm font-medium text-green-700"><x-icon name="check-circle" class="h-5 w-5" />{{ preg_match('/^[a-z]+(-[a-z]+)+$/', $status) ? __(ucfirst(str_replace('-', ' ', $status))) : $status }}.</p>
             @endif
 
-            {{-- the team's working file with the posts prepared to go up: one file, read as text like the folder's documents --}}
-            <x-section icon="presentation-chart-bar" :title="__('Posts slideshow')" :description="__('The Google Slides file where the team keeps the posts that will go up. Claude reads it when it plans or makes posts for this client: it does not plan them again, plans around them and writes the same way.')">
-                <div class="py-5 text-sm">
-                    @error('slideshow') <p class="mb-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    @if ($slideshow)
-                        <div class="flex flex-wrap items-center gap-3">
-                            <a href="{{ \App\Planning\ClientReference::url($slideshow->external_id, (string) ($slideshowDocument?->mime ?? $slideshow->meta['mime'] ?? '')) }}" target="_blank" rel="noopener" class="font-medium text-gray-900 hover:text-brand-600">{{ $slideshow->name }}</a>
-                            <span class="text-gray-600">
-                                @if ($slideshowDocument && $slideshowDocument->error === null && ($slideshow->meta['synced_at'] ?? null))
-                                    {{ __('Last read :when, :n characters', ['when' => \Illuminate\Support\Carbon::parse($slideshow->meta['synced_at'])->format('d-m-Y H:i'), 'n' => number_format($slideshowDocument->chars)]) }}
-                                @elseif (! ($slideshow->meta['synced_at'] ?? null))
-                                    {{ __('Not read yet') }}
-                                @endif
-                            </span>
-                            <form method="POST" action="{{ route('clients.files.slideshow.sync', $client) }}">@csrf<x-secondary-button type="submit"><x-icon name="arrow-path" class="h-4 w-4" />{{ __('Read it now') }}</x-secondary-button></form>
-                            <form method="POST" action="{{ route('accounts.destroy', $slideshow) }}" onsubmit="return confirm('{{ __('Unlink this slideshow? Its text is forgotten here; nothing changes on Drive.') }}')">@csrf @method('DELETE')<button type="submit" class="inline-flex items-center gap-1 text-sm text-red-600 hover:underline"><x-icon name="link-slash" class="h-4 w-4" />{{ __('Unlink') }}</button></form>
-                        </div>
-                        @if ($slideshow->meta['error'] ?? null)
-                            <p class="mt-2 text-sm text-red-600">{{ $slideshow->meta['error'] }}</p>
-                        @elseif ($slideshowDocument?->error)
-                            <p class="mt-2 text-sm text-red-600">{{ $slideshowDocument->errorText() }}</p>
-                        @endif
-                        <p class="mt-2 text-gray-600">{{ __('Read again every hour, and when you press Read it now.') }}</p>
-                        @if ($slideshowDocument?->text)
-                            <details class="mt-3">
-                                <summary class="cursor-pointer font-medium text-gray-900">{{ __('What Claude reads') }}</summary>
-                                <pre class="mt-2 max-h-96 overflow-auto whitespace-pre-wrap rounded-md border border-gray-300 bg-gray-50 p-3 font-sans text-xs text-gray-900">{{ \Illuminate\Support\Str::limit($slideshowDocument->text, \App\Planning\ClientReference::UPCOMING_TOTAL) }}</pre>
-                            </details>
-                        @endif
-                    @elseif ($driveEmail)
-                        <p class="text-gray-600">{{ __('Share the file with :email (Viewer is enough), or open it to anyone with the link, before linking it.', ['email' => $driveEmail]) }}</p>
-                        <form method="POST" action="{{ route('clients.files.slideshow', $client) }}" class="mt-3 flex flex-col gap-2 sm:flex-row">@csrf
-                            <x-text-input name="slideshow" type="text" class="block w-full min-w-0 text-sm" :value="old('slideshow')" placeholder="https://docs.google.com/presentation/d/…" required />
-                            <x-primary-button class="flex-none"><x-icon name="link" class="h-4 w-4" />{{ __('Link') }}</x-primary-button>
-                        </form>
-                    @else
-                        <p class="text-gray-600">{{ __('Add GOOGLE_SERVICE_ACCOUNT_JSON to .env to pull files from a shared Drive folder (docs/pilot-setup.md).') }}</p>
-                    @endif
+            <div class="md:flex md:gap-8">
+                <x-side-tabs :groups="$groups" :label="__('Files')" />
+                {{-- one section shows at a time: no spacing between them, or the hidden ones would push the open one down --}}
+                <div class="min-w-0 flex-1">
+                    @include('clients.files._media')
+                    @include('clients.files._sources')
+                    @include('clients.files._reel')
+                    @include('clients.files._slideshow')
+                    @include('clients.files._folder')
+                    @include('clients.files._designs')
+                    @include('clients.files._feed')
                 </div>
-            </x-section>
+            </div>
+        </div>
 
-            {{-- the shop's product feed: the products Claude links in the posts it plans, read daily as text --}}
-            <x-section icon="tag" :title="__('Product feed')" :description="__('The XML file the client\'s e-shop makes for Skroutz, BestPrice, Google Shopping or Facebook. Claude links real products from it in the posts it plans and writes.')">
-                <div class="py-5 text-sm">
-                    @error('feed') <p class="mb-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    @if ($feed)
-                        <div class="flex flex-wrap items-center gap-3">
-                            <a href="{{ $feed->meta['url'] ?? '#' }}" target="_blank" rel="noopener" class="font-medium text-gray-900 hover:text-brand-600">{{ $feed->name }}</a>
-                            <span class="text-gray-600">
-                                @if (isset($feed->meta['count'], $feed->meta['synced_at']))
-                                    {{ __('Last read :when, :n products (:m in stock)', ['when' => \Illuminate\Support\Carbon::parse($feed->meta['synced_at'])->format('d-m-Y H:i'), 'n' => number_format($feed->meta['count']), 'm' => number_format($feed->meta['in_stock'] ?? 0)]) }}
-                                @elseif (! ($feed->meta['synced_at'] ?? null))
-                                    {{ __('Not read yet') }}
-                                @endif
-                            </span>
-                            <form method="POST" action="{{ route('clients.files.feed.sync', $client) }}">@csrf<x-secondary-button type="submit"><x-icon name="arrow-path" class="h-4 w-4" />{{ __('Read the feed now') }}</x-secondary-button></form>
-                            <form method="POST" action="{{ route('accounts.destroy', $feed) }}" onsubmit="return confirm('{{ __('Unlink this product feed? Its products are forgotten here; nothing changes on the shop.') }}')">@csrf @method('DELETE')<button type="submit" class="inline-flex items-center gap-1 text-sm text-red-600 hover:underline"><x-icon name="link-slash" class="h-4 w-4" />{{ __('Unlink') }}</button></form>
+        {{-- The preview: the photo or the video itself, with Download and a new tab --}}
+        <div x-show="preview" x-cloak x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-6" x-on:click.self="preview = null" role="dialog" aria-modal="true" data-preview>
+            <template x-if="preview">
+                <div class="flex max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white">
+                    <div class="flex items-start gap-3 border-b border-gray-300 px-4 py-3">
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate font-mono text-sm text-gray-900" x-text="preview.name"></p>
+                            <p class="truncate text-xs text-gray-600" x-text="preview.meta"></p>
                         </div>
-                        @if ($feed->meta['error'] ?? null)
-                            <p class="mt-2 text-sm text-red-600">{{ $feed->meta['error'] }}</p>
-                        @endif
-                        @if ($feed->meta['capped'] ?? false)
-                            <p class="mt-2 text-sm text-amber-700">{{ __('The feed holds more than :max products; the first :max are kept.', ['max' => number_format(\App\Products\ProductFeed::MAX_PRODUCTS)]) }}</p>
-                        @endif
-                        <p class="mt-2 text-gray-600">{{ __('Read again every day, and when you press Read the feed now.') }}</p>
-                        @if ($productTotal > 0)
-                            <form method="GET" action="{{ route('clients.files', $client) }}" class="mt-4 flex gap-2">
-                                <x-text-input name="q" type="search" class="block w-full min-w-0 text-sm" :value="$productQuery" placeholder="{{ __('Search the products, as Claude does') }}" />
-                                <x-secondary-button type="submit" class="flex-none"><x-icon name="magnifying-glass" class="h-4 w-4" />{{ __('Search') }}</x-secondary-button>
-                            </form>
-                            <ul class="mt-3 divide-y divide-gray-200 rounded-lg border border-gray-300">
-                                @forelse ($products as $product)
-                                    <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
-                                        <a href="{{ $product->url }}" target="_blank" rel="noopener" class="min-w-0 flex-1 truncate font-medium text-gray-900 hover:text-brand-600">{{ $product->name }}</a>
-                                        @if ($product->category)<span class="max-w-xs truncate text-xs text-gray-600">{{ $product->category }}</span>@endif
-                                        @if ($product->sale_price ?: $product->price)<span class="tabular-nums text-gray-900">{{ $product->sale_price ?: $product->price }}</span>@endif
-                                        @if ($product->in_stock === false)<span class="rounded bg-gray-100 px-1.5 text-xs text-gray-600">{{ __('Out of stock') }}</span>@endif
-                                    </li>
-                                @empty
-                                    <li class="px-3 py-3 text-gray-600">{{ __('No product matches these words.') }}</li>
-                                @endforelse
-                            </ul>
-                            @if ($productQuery === '' && $productTotal > $products->count())
-                                <p class="mt-2 text-xs text-gray-600">{{ __('The first :n of :total by name; search to find the others.', ['n' => $products->count(), 'total' => number_format($productTotal)]) }}</p>
-                            @endif
-                        @endif
-                    @else
-                        <p class="text-gray-600">{{ __('Ask whoever runs the client\'s e-shop for the link of its product feed; most Greek shops have one for Skroutz or BestPrice.') }}</p>
-                        <form method="POST" action="{{ route('clients.files.feed', $client) }}" class="mt-3 flex flex-col gap-2 sm:flex-row">@csrf
-                            <x-text-input name="feed" type="text" class="block w-full min-w-0 text-sm" :value="old('feed')" placeholder="https://shop.gr/feeds/skroutz.xml" required />
-                            <x-primary-button class="flex-none"><x-icon name="link" class="h-4 w-4" />{{ __('Link') }}</x-primary-button>
-                        </form>
-                    @endif
+                        <button type="button" x-on:click="preview = null" class="{{ $btn }} flex-none px-2.5 py-1">{{ __('Close') }}</button>
+                    </div>
+                    <div class="flex min-h-0 flex-1 items-center justify-center bg-gray-900">
+                        <template x-if="preview.kind === 'image' && ! preview.broken"><img x-bind:src="preview.url" alt="" class="max-h-[70vh] max-w-full object-contain" x-on:error="preview.broken = true"></template>
+                        <template x-if="preview.kind === 'video'"><video x-bind:src="preview.url" controls playsinline class="max-h-[70vh] w-full"></video></template>
+                        <p x-show="preview.broken" class="px-6 py-16 text-center text-sm text-white">{{ __('This browser cannot show this file. Download it to see it.') }}</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3 px-4 py-3">
+                        <a x-bind:href="preview.download" class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-600"><x-icon name="arrow-down-tray" class="h-4 w-4" />{{ __('Download') }}</a>
+                        <a x-bind:href="preview.url" target="_blank" rel="noopener" class="text-sm font-medium text-gray-900 hover:text-brand-600">{{ __('Open in a new tab') }}</a>
+                    </div>
                 </div>
-            </x-section>
-
-            <x-section icon="folder" :title="__('Google Drive folder')" :description="__('What Claude reads when it plans this client: the previous posts, so it does not repeat them, and the reference files, as facts.')">
-                <div class="py-5 text-sm">
-                    @error('folder') <p class="mb-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                    @if ($folder)
-                        <div class="flex flex-wrap items-center gap-3">
-                            <span class="font-medium text-gray-900">{{ $folder->name }}</span>
-                            <span class="text-gray-600">
-                                @if (isset($folder->meta['synced_at'], $folder->meta['design_count']))
-                                    {{ __('Last read :when, :n documents and :d designs', ['when' => \Illuminate\Support\Carbon::parse($folder->meta['synced_at'])->format('d-m-Y H:i'), 'n' => $folder->meta['file_count'] ?? 0, 'd' => $folder->meta['design_count']]) }}
-                                @elseif ($folder->meta['synced_at'] ?? null)
-                                    {{ __('Last read :when, :n files', ['when' => \Illuminate\Support\Carbon::parse($folder->meta['synced_at'])->format('d-m-Y H:i'), 'n' => $folder->meta['file_count'] ?? 0]) }}
-                                @else
-                                    {{ __('Not read yet') }}
-                                @endif
-                            </span>
-                            <form method="POST" action="{{ route('clients.files.sync', $client) }}">@csrf<x-secondary-button type="submit"><x-icon name="arrow-path" class="h-4 w-4" />{{ __('Read the folder now') }}</x-secondary-button></form>
-                            <form method="POST" action="{{ route('accounts.destroy', $folder) }}" onsubmit="return confirm('{{ __('Unlink this folder? Its files are forgotten here; nothing changes on Drive.') }}')">@csrf @method('DELETE')<button type="submit" class="inline-flex items-center gap-1 text-sm text-red-600 hover:underline"><x-icon name="link-slash" class="h-4 w-4" />{{ __('Unlink') }}</button></form>
-                        </div>
-                        @if ($folder->meta['error'] ?? null)
-                            <p class="mt-2 text-sm text-red-600">{{ $folder->meta['error'] }}</p>
-                        @endif
-                        @if ($folder->meta['capped'] ?? false)
-                            <p class="mt-2 text-sm text-amber-700">{{ __('The folder holds more files than the :max read here: its own files first, then its subfolders, :depth levels deep at most.', ['max' => number_format(\App\Media\GoogleDrive::DOCUMENTS_MAX), 'depth' => \App\Media\GoogleDrive::DOCUMENTS_DEPTH]) }}</p>
-                        @endif
-                    @elseif ($driveEmail)
-                        @if ($inbox)
-                            {{-- the photo inbox folder is already shared and known: one click links it here too --}}
-                            <form method="POST" action="{{ route('clients.files.link', $client) }}" class="mb-4">@csrf
-                                <input type="hidden" name="folder" value="{{ $inbox->external_id }}">
-                                <x-secondary-button type="submit">{{ __('Use the photo inbox folder “:name”', ['name' => $inbox->name]) }}</x-secondary-button>
-                            </form>
-                        @endif
-                        <p class="text-gray-600">{{ __('Share the folder with :email (Viewer is enough) before linking it.', ['email' => $driveEmail]) }}</p>
-                        <form method="POST" action="{{ route('clients.files.link', $client) }}" class="mt-3 flex flex-col gap-2 sm:flex-row">@csrf
-                            <x-text-input name="folder" type="text" class="block w-full min-w-0 text-sm" :value="old('folder')" placeholder="https://drive.google.com/drive/folders/…" required />
-                            <x-primary-button class="flex-none"><x-icon name="link" class="h-4 w-4" />{{ __('Link') }}</x-primary-button>
-                        </form>
-                    @else
-                        <p class="text-gray-600">{{ __('Add GOOGLE_SERVICE_ACCOUNT_JSON to .env to pull files from a shared Drive folder (docs/pilot-setup.md).') }}</p>
-                    @endif
-                </div>
-            </x-section>
-
-            @if ($folder)
-                <x-section icon="document-text" :title="__('Files')" :description="__('Previous posts: what the client published, so Claude does not repeat it. Reference: facts Claude plans from. Not used: left out.')" flush>
-                    @if ($documents->isEmpty())
-                        <div class="p-6">
-                            <x-empty-state icon="document-text">{{ __('No documents in this folder yet. Word, Excel, PowerPoint, Google Docs, Sheets, Slides and text files are read as text; photos, graphics, PDFs and videos are listed under Designs.') }}</x-empty-state>
-                        </div>
-                    @else
-                        <ul class="divide-y divide-gray-200 text-sm">
-                            @foreach ($documents as $document)
-                                <li class="grid gap-3 px-6 py-3 sm:grid-cols-12 sm:items-center">
-                                    <div class="min-w-0 sm:col-span-5">
-                                        <p class="truncate font-medium text-gray-900">{{ $document->name }}</p>
-                                        @if ($document->path !== '')<p class="truncate text-xs text-gray-600">{{ $document->path }}</p>@endif
-                                        @if ($document->mime === 'application/vnd.google-apps.spreadsheet')<p class="text-xs text-gray-600">{{ __('Google Sheets: only the first sheet is read.') }}</p>@endif
-                                    </div>
-                                    <form method="POST" action="{{ route('clients.files.kind', [$client, $document]) }}" class="sm:col-span-3">
-                                        @csrf @method('PATCH')
-                                        <select name="kind" onchange="this.form.requestSubmit()" aria-label="{{ __('Type') }}" class="block w-full rounded-md border-gray-300 py-1 text-sm focus:border-brand-500 focus:ring-brand-500">
-                                            @foreach ($document->kindChoices() as $value => $label)<option value="{{ $value }}" @selected($document->kind === $value)>{{ __($label) }}</option>@endforeach
-                                        </select>
-                                    </form>
-                                    <div class="text-xs sm:col-span-2">
-                                        @if ($document->error)
-                                            <span class="text-red-600">{{ $document->errorText() }}</span>
-                                        @else
-                                            <span class="text-gray-600">{{ __(':n characters read', ['n' => number_format($document->chars)]) }}</span>
-                                        @endif
-                                    </div>
-                                    <div class="text-xs tabular-nums text-gray-600 sm:col-span-2">{{ $document->modified_at?->format('d-m-Y') }}</div>
-                                </li>
-                            @endforeach
-                        </ul>
-                    @endif
-                </x-section>
-
-                {{-- the pictures come from Drive on each view (clients.files.preview) and are never kept; only Claude's description is --}}
-                <x-section icon="swatch" :title="__('Designs')" :description="__('Photos, graphics, PDFs and videos of the posts the client published: Claude looks at Drive\'s preview of each one and describes the post it shows, once. Only that text is kept here, never the picture.')" flush>
-                    @if ($designTotal === 0)
-                        <div class="p-6">
-                            <x-empty-state icon="swatch">{{ __('No designs in this folder yet. Photos, Illustrator, Photoshop, InDesign and EPS files, PDFs and videos are listed here.') }}</x-empty-state>
-                        </div>
-                    @else
-                        <p class="px-6 py-3 text-sm text-gray-600">{{ __(':done of :total described; Claude describes up to 25 an hour.', $described) }}</p>
-                        <ul class="divide-y divide-gray-200 text-sm">
-                            @foreach ($designs as $design)
-                                <li class="flex gap-4 px-6 py-3">
-                                    @if ($design->error === \App\Models\ClientDocument::NO_PREVIEW)
-                                        <div class="h-24 w-24 flex-none rounded-md border border-gray-300 bg-gray-100" aria-hidden="true"></div>
-                                    @else
-                                        <img src="{{ route('clients.files.preview', [$client, $design]) }}" loading="lazy" alt="" width="96" height="96" class="h-24 w-24 flex-none rounded-md border border-gray-300 bg-gray-100 object-cover">
-                                    @endif
-                                    <div class="min-w-0 flex-1">
-                                        <div class="flex flex-wrap items-start justify-between gap-2">
-                                            <div class="min-w-0">
-                                                <p class="truncate font-medium text-gray-900">{{ $design->name }}</p>
-                                                <p class="truncate text-xs text-gray-600">@if ($design->path !== ''){{ $design->path }} · @endif<span class="tabular-nums">{{ $design->modified_at?->format('d-m-Y') }}</span></p>
-                                            </div>
-                                            <form method="POST" action="{{ route('clients.files.kind', [$client, $design]) }}" class="w-36 flex-none">
-                                                @csrf @method('PATCH')
-                                                <select name="kind" onchange="this.form.requestSubmit()" aria-label="{{ __('Type') }}" class="block w-full rounded-md border-gray-300 py-1 text-sm focus:border-brand-500 focus:ring-brand-500">
-                                                    @foreach ($design->kindChoices() as $value => $label)<option value="{{ $value }}" @selected($design->kind === $value)>{{ __($label) }}</option>@endforeach
-                                                </select>
-                                            </form>
-                                        </div>
-                                        <div class="mt-1.5 text-xs">
-                                            @if ($design->text !== null)
-                                                <details>
-                                                    <summary class="cursor-pointer text-gray-900">{{ \Illuminate\Support\Str::limit(\Illuminate\Support\Str::before($design->text, "\n"), 160) }}</summary>
-                                                    <p class="mt-1 whitespace-pre-line text-gray-600">{{ $design->text }}</p>
-                                                </details>
-                                            @elseif ($design->error)
-                                                <span class="text-red-600">{{ $design->errorText() }}</span>
-                                            @elseif ($design->kind === 'design')
-                                                <span class="text-gray-600">{{ __('Waiting for Claude') }}</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </li>
-                            @endforeach
-                        </ul>
-                        @if ($designs->count() < $designTotal)
-                            <p class="px-6 py-3 text-sm"><a href="{{ route('clients.files', [$client, 'all' => 1]) }}" class="font-medium text-gray-900 hover:text-brand-600">{{ __('Show all :n designs', ['n' => $designTotal]) }}</a></p>
-                        @endif
-                    @endif
-                </x-section>
-            @endif
+            </template>
         </div>
     </div>
+
+    <script>
+        // The page's sections: the address's #section first (a link like #folder opens it too), else the one the server names, else the
+        // one opened last in this browser; the open one goes into the address, so a reload stays on it.
+        window.filesPage = ({ tabs, open }) => ({
+            preview: null,
+            tabs,
+            tab: (() => {
+                const hash = location.hash.slice(1);
+                let last = null;
+                try { last = localStorage.getItem('client-files-tab'); } catch (e) {}
+                return tabs.includes(hash) ? hash : (open || (tabs.includes(last) ? last : 'media'));
+            })(),
+            init() {
+                // on a phone the side list is a row that scrolls sideways: keep the open section's button in sight
+                const reveal = () => this.$nextTick(() => {
+                    const button = this.$root.querySelector(`[data-tab="${this.tab}"]`);
+                    if (button) button.parentElement.scrollLeft = button.offsetLeft - button.parentElement.offsetLeft - 16;
+                });
+                reveal();
+                this.$watch('tab', tab => {
+                    try { localStorage.setItem('client-files-tab', tab); } catch (e) {}
+                    history.replaceState(null, '', '#' + tab);
+                    reveal();
+                });
+            },
+            fromHash() { const hash = location.hash.slice(1); if (this.tabs.includes(hash)) this.tab = hash; },
+        });
+        // The staff upload: files dropped anywhere on the page or picked wait in a list; Upload sends them three at a time, one file per
+        // request, so each shows its own progress and a refused file never stops the others. When all went in, the page reloads with them.
+        window.assetUploader = (config) => ({
+            items: [], over: false, busy: false, next: 0,
+            hasFiles(e) { return [...(e.dataTransfer?.types || [])].includes('Files'); },
+            dragover(e) { if (this.hasFiles(e)) { e.preventDefault(); this.over = true; } },
+            drop(e) { if (this.hasFiles(e)) { e.preventDefault(); this.over = false; this.add(e.dataTransfer.files); } },
+            add(files) {
+                for (const file of files) {
+                    const item = { id: ++this.next, file, state: 'waiting', progress: 0, message: '' };
+                    if (file.size > config.maxBytes) Object.assign(item, { state: 'failed', message: config.text.tooBig });
+                    else if (file.type && !/^(image|video)\//.test(file.type)) Object.assign(item, { state: 'failed', message: config.text.type }); // the server checks the exact types
+                    this.items.push(item);
+                }
+            },
+            remove(item) { this.items = this.items.filter(i => i.id !== item.id); },
+            waiting() { return this.items.filter(i => i.state === 'waiting'); },
+            done() { return this.items.filter(i => i.state === 'done').length; },
+            mb(bytes) { return bytes < 1048576 ? Math.max(1, Math.round(bytes / 1024)) + ' KB' : (bytes / 1048576).toFixed(1) + ' MB'; },
+            buttonLabel() { const n = this.waiting().length; return n > 1 ? config.text.buttonMany.replace(':n', n) : config.text.button; },
+            status(item) {
+                return { waiting: config.text.waiting, uploading: config.text.uploading.replace(':percent', item.progress) }[item.state] ?? item.message;
+            },
+            summary() {
+                const failed = this.items.filter(i => i.state === 'failed').length;
+                return this.busy || !(this.done() + failed) || this.waiting().length ? '' : config.text.summary.replace(':done', this.done()).replace(':failed', failed);
+            },
+            async start() {
+                const queue = this.waiting();
+                if (!queue.length) return document.getElementById('upload-files').click();
+                this.busy = true;
+                const worker = async () => { for (let item; (item = queue.shift());) await this.send(item); };
+                await Promise.all([worker(), worker(), worker()]);
+                this.busy = false;
+                if (this.items.every(i => i.state === 'done')) location.reload();
+            },
+            send(item) {
+                return new Promise(resolve => {
+                    const data = new FormData(this.$root);
+                    data.delete('files[]');
+                    data.append('files[]', item.file);
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', this.$root.action);
+                    xhr.setRequestHeader('Accept', 'application/json');
+                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                    item.state = 'uploading';
+                    xhr.upload.onprogress = e => { if (e.lengthComputable) item.progress = Math.min(99, Math.round(e.loaded / e.total * 100)); };
+                    xhr.onload = () => {
+                        let json = {};
+                        try { json = JSON.parse(xhr.responseText); } catch (e) {}
+                        if (xhr.status === 201 && json.uploaded?.length) {
+                            Object.assign(item, { state: 'done', progress: 100, message: config.text.added.replace(':name', json.uploaded[0].name) });
+                        } else {
+                            const reason = json.failed?.[0]?.error || Object.values(json.errors || {})[0]?.[0] || { 413: config.text.tooBig, 419: config.text.expired }[xhr.status] || json.message || config.text.error;
+                            Object.assign(item, { state: 'failed', message: reason });
+                        }
+                        resolve();
+                    };
+                    xhr.onerror = () => { Object.assign(item, { state: 'failed', message: config.text.offline }); resolve(); };
+                    xhr.send(data);
+                });
+            },
+        });
+    </script>
 </x-app-layout>

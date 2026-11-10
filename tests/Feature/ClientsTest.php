@@ -117,9 +117,9 @@ test('plan with Claude queues a content:plan run for the chosen accounts and mai
     $client = Client::factory()->create(['slug' => 'almyra']);
     $from = now()->addDay()->toDateString();
 
-    $this->actingAs($staff)->get("/clients/{$client->id}/edit")->assertOk()->assertSee('Plan with Claude');
+    $this->actingAs($staff)->get("/clients/{$client->id}/plan")->assertOk()->assertSee('Plan with Claude')->assertSee(route('clients.plan', $client));
     $this->actingAs($staff)->post("/clients/{$client->id}/plan", ['posts' => 3, 'platforms' => ['instagram'], 'from' => $from, 'days' => 14])
-        ->assertRedirect("/clients/{$client->id}/edit")->assertSessionHas('status', 'plan-started');
+        ->assertRedirect("/clients/{$client->id}/plan")->assertSessionHas('status', 'plan-started');
     Bus::assertDispatched(PlanContentBatch::class, fn (PlanContentBatch $job) => $job->options['posts'] === 3 && $job->options['platforms'] === ['instagram']);
     $this->actingAs($staff)->post("/clients/{$client->id}/plan", ['posts' => 3, 'platforms' => ['pinterest'], 'from' => '2020-01-01', 'days' => 14])
         ->assertSessionHasErrors(['platforms.0', 'from']);
@@ -135,9 +135,9 @@ test('post from a prompt queues a one-post content:plan run with the instruction
     $staff = User::factory()->create();
     $client = Client::factory()->create(['slug' => 'almyra']);
 
-    $this->actingAs($staff)->get("/clients/{$client->id}/edit")->assertOk()->assertSee('Post from a prompt');
+    $this->actingAs($staff)->get("/clients/{$client->id}/plan")->assertOk()->assertSee('Post from a prompt');
     $this->actingAs($staff)->post("/clients/{$client->id}/draft", ['instruction' => 'Sunset cocktails this weekend', 'platforms' => ['instagram', 'facebook'], 'date' => ''])
-        ->assertRedirect("/clients/{$client->id}/edit")->assertSessionHas('status', 'post-started');
+        ->assertRedirect("/clients/{$client->id}/plan")->assertSessionHas('status', 'post-started');
     Bus::assertDispatched(PlanContentBatch::class, fn (PlanContentBatch $job) => $job->options === ['posts' => 1, 'platforms' => ['instagram', 'facebook'], 'from' => now()->addDay()->toDateString(), 'days' => 1, 'instruction' => 'Sunset cocktails this weekend', 'latest_brief' => true, 'brief' => null]);
     $this->actingAs($staff)->post("/clients/{$client->id}/draft", ['instruction' => 'Fresh one', 'platforms' => ['instagram'], 'date' => '2027-05-12', 'fresh' => '1', 'brief' => '# Pasted'])
         ->assertSessionHas('status', 'post-started');

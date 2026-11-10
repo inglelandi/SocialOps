@@ -34,9 +34,7 @@
                                                 @foreach ($clients as $client)
                                                     <label class="flex items-center gap-1"><input type="checkbox" name="client_ids[]" value="{{ $client->id }}" class="rounded border-gray-300" @checked(in_array($client->id, $user->client_ids ?? [])) /> {{ $client->name }}</label>
                                                 @endforeach
-                                                @can('admin')
-                                                    <label class="flex items-center gap-1 pt-1 border-t"><input type="checkbox" name="is_admin" value="1" class="rounded border-gray-300" @checked($user->is_admin) /> {{ __('Admin: sees the Settings page and can make other admins') }}</label>
-                                                @endcan
+                                                <label class="flex items-center gap-1 pt-1 border-t"><input type="checkbox" name="is_admin" value="1" class="rounded border-gray-300" @checked($user->is_admin) /> {{ __('Admin: sees Staff, Settings and Refresh after update') }}</label>
                                                 <button type="submit" class="rounded-lg border border-gray-300 px-2.5 py-1 font-medium text-gray-700 hover:bg-gray-50">{{ __('Save (none ticked: every client)') }}</button>
                                             </form>
                                         </details>
