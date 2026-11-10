@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Http\Controllers\PostController;
 use App\Http\Requests\PostRequest;
+use App\Models\ClientProduct;
 use App\Models\Post;
 use App\Posts\PostState;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -26,7 +27,8 @@ class UpdatePost extends Tool
         $post = $this->post($request->get('post'));
         throw_if($post->state === PostState::Published, ValidationException::withMessages(['post' => 'A published post cannot be changed.']));
 
-        $given = Arr::except($request->all(), 'post');
+        $products = $request->has('products') ? $this->products($post, (array) $request->get('products')) : null;
+        $given = Arr::except($request->all(), ['post', 'products']);
         $input = array_replace([
             'platforms' => $post->platforms,
             'format' => $post->format,
@@ -50,7 +52,35 @@ class UpdatePost extends Tool
         $form->setRouteResolver(fn () => $route);
         $form->validateResolved();
 
-        return Response::json($posts->updatePost($form, $post)->refresh()->load('variants', 'assets')->toApiArray());
+        $post = $posts->updatePost($form, $post)->refresh();
+        if ($products !== null) { // replaced whole, not merged: [] clears; a planning detail, so an approved post stays approved
+            $settings = $post->settings ?? [];
+            if ($products === []) {
+                unset($settings['products']);
+            } else {
+                $settings['products'] = $products;
+            }
+            $post->forceFill(['settings' => $settings ?: null])->save();
+        }
+
+        return Response::json($post->refresh()->load('variants', 'assets')->toApiArray());
+    }
+
+    /**
+     * The shop products a post links, by their find-products ids, as the post keeps them (ClientProduct::snapshot()).
+     *
+     * @throws ValidationException naming an id that is not in this client's shop
+     */
+    private function products(Post $post, array $ids): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        throw_if(count($ids) > ClientProduct::PER_POST, ValidationException::withMessages(['products' => 'At most '.ClientProduct::PER_POST.' products per post.']));
+        $found = $post->client->products()->whereIn('id', $ids)->get()->keyBy('id');
+        foreach ($ids as $id) {
+            throw_unless($found->has($id), ValidationException::withMessages(['products' => "Product {$id} is not in {$post->client->name}'s shop. Use the ids find-products gives."]));
+        }
+
+        return array_map(fn ($id) => $found[$id]->snapshot(), $ids);
     }
 
     public function schema(JsonSchema $schema): array
@@ -65,6 +95,7 @@ class UpdatePost extends Tool
             'variants' => $schema->object()->description('Captions to change, per platform and language: {"instagram": {"el": {"caption": "..."}}} changes that caption only; "alt_text" and "hashtags" (list) likewise'),
             'settings' => $schema->object()->description('Optional: {"first_comment": "...", "instagram": {"collaborators": "@a @b"}, "repeat": "weekly"}'),
             'assets' => $schema->array()->items($schema->integer())->description('Ids of the client\'s assets, in order; replaces the list'),
+            'products' => $schema->array()->items($schema->integer())->description('Ids of the client\'s shop products the post links, from find-products (at most '.ClientProduct::PER_POST.'); replaces the list, [] clears it'),
         ];
     }
 }

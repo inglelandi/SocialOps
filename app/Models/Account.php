@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A client's connected platform account. Tokens are encrypted at rest and only ever come from OAuth. The intake and reference
- * folders live here too, with an empty token: platform drive and dropbox (the inbox), drive_docs and drive_slides (the Files
- * tab: the reference folder and the posts slideshow).
+ * folders live here too, with an empty token: platform drive and dropbox (the inbox), drive_docs, drive_slides and
+ * product_feed (the Files tab: the reference folder, the posts slideshow and the shop's product feed, its link in meta.url).
  */
 #[Fillable(['platform', 'external_id', 'name', 'access_token', 'refresh_token', 'token_expires_at', 'token_alerted_at', 'meta', 'connected_by'])]
 class Account extends Model
@@ -36,6 +36,12 @@ class Account extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(ClientDocument::class);
+    }
+
+    /** The products read from a product_feed row (the client's shop feed); they go with the row. */
+    public function products(): HasMany
+    {
+        return $this->hasMany(ClientProduct::class);
     }
 
     /** The staff member who connected it: the one to warn when the token runs out. */

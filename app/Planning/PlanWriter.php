@@ -163,7 +163,7 @@ class PlanWriter
             'format' => $post['format'],
             'pillar' => $post['pillar'],
             'brief' => "{$post['title']}\n{$post['angle']}\n{$trend}{$t('Why now:')} {$post['why_now']}\n{$t('Asset:')} {$post['asset_brief']}",
-            'settings' => isset($captions['design']) ? ['design' => $captions['design']] : null,
+            'settings' => array_filter(['design' => $captions['design'] ?? null, 'products' => $post['products'] ?? null]) ?: null, // products: snapshots of the shop's products the post links (save-plan)
             'scheduled_at' => $date,
         ]);
 
@@ -201,6 +201,9 @@ class PlanWriter
             $md .= '- '.$t('Angle:')." {$post['angle']}\n- ".$t('Asset:')." {$post['asset_brief']}\n";
             if (($post['caption_brief'] ?? '') !== '') {
                 $md .= '- '.$t('Caption brief:')." {$post['caption_brief']}\n";
+            }
+            foreach ($post['products'] ?? [] as $product) {
+                $md .= '- '.$t('Product:')." {$product['name']} ({$product['url']})\n";
             }
             foreach (self::languages($captions) as $lang) {
                 foreach ($captions[$lang] as $platform => $caption) {

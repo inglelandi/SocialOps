@@ -93,6 +93,17 @@
                 </section>
             @endforeach
 
+            @if (! empty($post->settings['products']))
+                <section class="rounded-lg border border-gray-300 p-3" data-products>
+                    <p class="{{ $label }}">{{ __('Product links') }}</p>
+                    <ul class="space-y-2">
+                        @foreach ($post->settings['products'] as $product)
+                            <li class="flex flex-wrap items-center gap-2"><a href="{{ $product['url'] }}" target="_blank" rel="noopener" class="min-w-0 flex-1 break-words text-sm font-medium text-gray-900 hover:text-brand-600">{{ $product['name'] }}</a><x-copy-button :text="$product['url']">{{ __('Copy link') }}</x-copy-button></li>
+                        @endforeach
+                    </ul>
+                </section>
+            @endif
+
             @if ($post->brief || array_filter($post->settings['design'] ?? []))
                 <details class="group rounded-lg border border-gray-300 text-sm">
                     <summary class="flex min-h-11 cursor-pointer list-none items-center [&::-webkit-details-marker]:hidden justify-between px-3 font-medium text-gray-900"><span class="inline-flex items-center gap-1.5"><x-icon name="document-text" class="h-4 w-4 text-gray-600" />{{ __('Brief and design text') }}</span> <span aria-hidden="true" class="text-gray-600 transition group-open:rotate-180">&#9662;</span></summary>

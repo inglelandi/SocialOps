@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\SyncClientDocuments;
+use App\Jobs\SyncProductFeed;
 use App\Media\GoogleDrive;
 use App\Models\Client;
 use App\Models\ClientDocument;
+use App\Models\ClientProduct;
+use App\Products\ProductFeed;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -24,6 +27,9 @@ class ClientFilesController extends Controller
     /** Designs listed on the tab before "Show all": each one's preview is a Drive call. */
     public const DESIGNS_SHOWN = 60;
 
+    /** Products listed on the tab while nothing is searched, by name. */
+    public const PRODUCTS_SHOWN = 30;
+
     public function index(Request $request, Client $client): View
     {
         $folder = $client->accounts()->where('platform', 'drive_docs')->first();
@@ -34,11 +40,18 @@ class ClientFilesController extends Controller
         $describable = $designs->filter(fn (ClientDocument $d) => $d->kind === 'design' && $d->error === null);
 
         $slideshow = $client->accounts()->where('platform', 'drive_slides')->first();
+        $feed = $client->accounts()->where('platform', 'product_feed')->first();
+        $productQuery = trim((string) $request->query('q', ''));
 
         return view('clients.files', [
             'client' => $client,
             'slideshow' => $slideshow,
             'slideshowDocument' => $slideshow?->documents()->first(),
+            'feed' => $feed,
+            'productQuery' => $productQuery,
+            'productTotal' => $feed ? $client->products()->count() : 0,
+            // the search Claude's find-products makes, out of stock included, so the team sees what Claude would find
+            'products' => ! $feed ? collect() : ($productQuery !== '' ? ClientProduct::search($client, $productQuery, ClientProduct::SEARCH_MAX, false) : $client->products()->orderBy('name')->limit(self::PRODUCTS_SHOWN)->get()),
             'folder' => $folder,
             'documents' => $documents,
             'designs' => $request->boolean('all') ? $designs : $designs->take(self::DESIGNS_SHOWN),
@@ -96,6 +109,34 @@ class ClientFilesController extends Controller
         SyncClientDocuments::dispatchSync($client->accounts()->where('platform', 'drive_slides')->firstOrFail());
 
         return redirect()->route('clients.files', $client)->with('status', __('Slideshow read again'));
+    }
+
+    /**
+     * Link the shop's product feed: the address checked (a public http(s) host), kept as the client's product_feed row with
+     * the link in meta.url, read in the queue. Another link in its place forgets the old products.
+     */
+    public function linkFeed(Request $request, Client $client): RedirectResponse
+    {
+        $url = trim($request->validate(['feed' => ['required', 'string', 'max:2000']])['feed']);
+        try {
+            ProductFeed::guard($url);
+        } catch (RuntimeException $e) {
+            return redirect()->route('clients.files', $client)->withInput()->withErrors(['feed' => $e->getMessage()]);
+        }
+        $account = $client->accounts()->updateOrCreate(['platform' => 'product_feed'], ['external_id' => sha1($url), 'name' => (string) parse_url($url, PHP_URL_HOST), 'access_token' => '', 'connected_by' => $request->user()?->id, 'meta' => ['url' => $url]]);
+        if (! $account->wasRecentlyCreated && $account->wasChanged('external_id')) {
+            $account->products()->delete();
+        }
+        SyncProductFeed::dispatch($account);
+
+        return redirect()->route('clients.files', $client)->with('status', __('Linked the product feed of :host, its products are being read', ['host' => $account->name]));
+    }
+
+    public function syncFeed(Client $client): RedirectResponse
+    {
+        SyncProductFeed::dispatch($client->accounts()->where('platform', 'product_feed')->firstOrFail());
+
+        return redirect()->route('clients.files', $client)->with('status', __('Reading the product feed now, the list refreshes in a minute or two'));
     }
 
     public function sync(Client $client): RedirectResponse

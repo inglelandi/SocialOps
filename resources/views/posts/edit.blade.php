@@ -97,6 +97,14 @@
 
             <div class="mt-4 lg:mt-0 space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
             @include('posts._preview')
+            @if (! empty($post->settings['products']))
+                {{-- the shop products Claude linked (find-products), kept as they were when the post was planned --}}
+                <x-section icon="tag" :title="__('Products in this post')" :description="__('From the client\'s product feed; the links go in the captions.')" class="text-sm">
+                    @foreach ($post->settings['products'] as $product)
+                        <p class="flex items-center gap-2 py-2"><a href="{{ $product['url'] }}" target="_blank" rel="noopener" class="min-w-0 flex-1 truncate font-medium text-gray-900 hover:text-brand-600">{{ $product['name'] }}</a>@if ($product['price'] ?? null)<span class="tabular-nums text-gray-600">{{ $product['price'] }}</span>@endif</p>
+                    @endforeach
+                </x-section>
+            @endif
             @php($notesHelp = __('internal, the client never sees them; @FirstName pings a colleague on Slack'))
             <x-section icon="chat-bubble-left-ellipsis" id="notes" :title="__('Team notes')" :description="$notesHelp" class="text-sm">
                 @foreach ($post->notes as $note)

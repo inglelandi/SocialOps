@@ -137,6 +137,9 @@
                                         @if ($slideshow)
                                             {{ __('And the posts slideshow “:name”.', ['name' => $slideshow->name]) }}
                                         @endif
+                                        @if ($productCount)
+                                            {{ __('And :n products from the shop.', ['n' => number_format($productCount)]) }}
+                                        @endif
                                     </a>
                                 </p>
                                 @if ($claudeJobs->isNotEmpty())

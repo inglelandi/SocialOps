@@ -64,3 +64,4 @@ Exit: the team plans, briefs, approves and tracks every client's month in Social
 - [x] Posts tied to a day keep their day: Claude's `fixed_date` flag in the plan, the holiday-name backup, the client's usual slot time (D24)
 - [x] Designs in the reference folder (D25): photos, graphics, PDFs, .ai/.psd/.indd/.eps and videos described once each by Claude through the connector from Drive's preview (never stored), 25 an hour, and handed to the planner as "Past designs"; the folder walked 6 levels deep, 1000 files
 - [x] Posts slideshow per client (D26): one Google Slides file with the posts prepared to go up, linked on the Files tab, read hourly as text and handed to the planner first, so plans fit around the posts already made
+- [x] Product feed per client (D27): the shop's Skroutz, BestPrice, Google or Facebook XML linked on the Files tab, read daily; Claude links real, in-stock products with find-products, and each post keeps them (post page, Post today)

@@ -11,6 +11,7 @@ Artisan::command('inspire', function () {
 Schedule::command('reviews:remind')->hourly();
 Schedule::command('slots:check')->weeklyOn(4, '09:00');
 Schedule::command('inbox:pull')->hourlyAt(15);
+Schedule::command('products:pull')->dailyAt('05:40'); // the shops' product feeds, before the day's planning
 Schedule::command('claude:check-queue')->hourlyAt(20); // the Claude worker runs at :56
 
 // Everything that talks to the platform APIs waits with the publishing flag (config/features.php)

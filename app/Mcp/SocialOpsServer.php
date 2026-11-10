@@ -3,6 +3,7 @@
 namespace App\Mcp;
 
 use App\Mcp\Tools\CreateDraft;
+use App\Mcp\Tools\FindProducts;
 use App\Mcp\Tools\GetCaptionBrief;
 use App\Mcp\Tools\GetDesign;
 use App\Mcp\Tools\GetPlanningBrief;
@@ -27,7 +28,7 @@ use Laravel\Mcp\Server\Attributes\Version;
 #[Instructions(<<<'MD'
 Social Ops organizes the social media work of an agency's clients (hospitality and local brands in Crete and Cyprus, Greek and English): the team plans, briefs, approves and tracks every post here and posts it in the apps by hand.
 Start with list-clients, then use the client's id or slug in the other tools. Captions go per platform and language under variants.
-To plan a month: get-planning-brief (the profile, the quota, the window, the recent posts), research the current trends yourself (the last30days skill or web search), plan the posts and write their captions, then save-plan files them as Drafts with a review sheet.
+To plan a month: get-planning-brief (the profile, the quota, the window, the recent posts), research the current trends yourself (the last30days skill or web search), plan the posts and write their captions (when the client has a shop, link real products found with find-products), then save-plan files them as Drafts with a review sheet.
 To write, shorten or change the captions of one post: get-caption-brief (the voice, the limits, the current captions), write them, then update-post.
 To describe a design from a client's Drive folder (a post it published before, as a graphic, photo, PDF or video): get-design (Drive's preview and where the file sits), look at it, then save-design-description with what is visible, never invented; each design is described once.
 Work the team queued in the app (the scheduled worker's job): list-claude-jobs, then the three recipes above; each job says how to clear it.
@@ -43,6 +44,7 @@ class SocialOpsServer extends Server
         UpdatePost::class,
         GetCaptionBrief::class,
         GetPlanningBrief::class,
+        FindProducts::class,
         ListClaudeJobs::class,
         GetDesign::class,
         SaveDesignDescription::class,

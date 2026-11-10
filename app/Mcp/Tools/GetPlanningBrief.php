@@ -52,6 +52,7 @@ class GetPlanningBrief extends Tool
             'trend_brief' => "Research it yourself before planning (the last30days skill, or web search): what people in {$profile['location']} and the guests of a {$profile['type']} talk about between {$plan->from->toDateString()} and {$plan->to->toDateString()}, the formats and sounds that work now on ".implode(', ', $plan->platforms).', and the moments of the season. Name each signal you use.',
             'recent' => $client->recentTopics(),
             'upcoming_posts' => $reference['upcoming_posts'],
+            'products' => $reference['products'],
             'previous_posts' => $reference['previous_posts'],
             'reference' => $reference['reference'],
             'designs' => $reference['designs'],
@@ -68,11 +69,12 @@ class GetPlanningBrief extends Tool
             'languages' => $languages,
             'prompt' => $prompt,
             'posts_slideshow' => $reference['slideshow'],
+            'shop' => $reference['products'] !== '' ? $reference['products'].' Search it with find-products.' : null,
             'reference_folder' => $reference['folder'],
             'reference_files' => $reference['files'],
             'caption_rules' => 'For each post write captions per platform and language ('.implode(', ', $languages).') in the voice above, the hook in the first line, placeholders like {{phone}} as written in the profile fields. Limits: '
                 .implode(', ', array_map(fn ($p, $n) => "{$p} {$n}", array_keys(PostRequest::CAPTION_MAX), PostRequest::CAPTION_MAX)).' characters. '.self::hashtagRule($profile['hashtags'] ?? []).' Add alt text per language and the design text (what goes on the graphic or in the video). Greek captions are reviewed by a person; do not publish anything.',
-            'then' => 'Write the captions of every post (caption_rules above), the posts are not done without them. Then call save-plan with the client, the trend brief you wrote (Markdown) and the posts: date, platforms, format, pillar, title, angle, trend_signal, why_now, asset_brief, caption_brief, fixed_date (true when the post is about that specific day and must not move), captions {'.implode(', ', array_map(fn ($l) => "{$l}: {platform: caption}", $languages)).', hashtags: [], alt_text: {lang: text}, design: {lang: text}, notes_for_reviewer}, language first, then platform. A post that arrives without captions is listed under captions_missing: write those with get-caption-brief and update-post.',
+            'then' => 'Write the captions of every post (caption_rules above), the posts are not done without them. Then call save-plan with the client, the trend brief you wrote (Markdown) and the posts: date, platforms, format, pillar, title, angle, trend_signal, why_now, asset_brief, caption_brief, fixed_date (true when the post is about that specific day and must not move), products (the ids find-products gave for the shop products the post links, when the client has a shop), captions {'.implode(', ', array_map(fn ($l) => "{$l}: {platform: caption}", $languages)).', hashtags: [], alt_text: {lang: text}, design: {lang: text}, notes_for_reviewer}, language first, then platform. A post that arrives without captions is listed under captions_missing: write those with get-caption-brief and update-post.',
         ];
         if ($note = self::referenceNote($client, $reference)) {
             $brief['note'] = $note;
