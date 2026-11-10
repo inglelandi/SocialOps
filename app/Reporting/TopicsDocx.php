@@ -9,9 +9,10 @@ use ZipArchive;
 
 /**
  * The θεματολογία (topic plan) of a content plan as a Word file for the client: the client and the month as a title, then
- * per post one bold line, a short description and why now, plain, without boxes (Panos, 2026-11-10: "keep the report
- * simpler"). The titles take the client's brand colour from the profile. Plain WordprocessingML written here, so nothing
- * to install on the server.
+ * per post one bold line, a short description, why now and the shop's products it links, each name a link to its page,
+ * plain, without boxes (Panos, 2026-11-10: "keep the report simpler", then "Can you link the products also on the word
+ * report?"). The titles and the links take the client's brand colour from the profile. Plain WordprocessingML written
+ * here, so nothing to install on the server.
  */
 class TopicsDocx
 {
@@ -46,6 +47,7 @@ class TopicsDocx
             .self::p('');
 
         $tiktok = 0;
+        $links = []; // relationship id => address, for the products' links
         foreach (self::posts($report) as $post) {
             $date = $post['day'];
             $format = __(ucfirst(str_replace('_', ' ', $post['format'])), [], $locale);
@@ -57,23 +59,52 @@ class TopicsDocx
             $body .= self::p(self::run($date->format('j/n').' · '.$post['title']." ({$format}){$tag}", bold: true, size: 24, color: $color))
                 .self::p(self::run($post['angle']))
                 .($whyNow !== '' ? self::p(self::run(__('Why now:', [], $locale).' ', bold: true).self::run($whyNow)) : '')
+                .self::products($post['products'], $locale, $color, $links)
                 .self::p('');
         }
 
-        return self::zip($body);
+        return self::zip($body, $links);
     }
 
     /**
-     * The plan's posts in date order, each with its `day`: the day its post has on the calendar now (moved to a slot when
-     * it was filed, or by the team since), else the planned date for a post no longer there.
+     * The products a post links: "Product: name" with the name a link to the product's page, or "Products:" with one per
+     * line. Only http(s) addresses become links (the feed keeps no other); a product without one is left out.
+     *
+     * @param  array<string, string>  $links  filled with the relationship id and address of each link
+     */
+    private static function products(array $products, string $locale, string $color, array &$links): string
+    {
+        $products = array_values(array_filter($products, fn ($product) => is_array($product) && filled($product['name'] ?? null) && preg_match('#^https?://#i', (string) ($product['url'] ?? ''))));
+        if ($products === []) {
+            return '';
+        }
+        $items = array_map(function (array $product) use ($color, &$links) {
+            $id = 'rId'.(count($links) + 2); // rId1 is the styles
+            $links[$id] = $product['url'];
+
+            return "<w:hyperlink r:id=\"{$id}\" w:history=\"1\">".self::run($product['name'], color: $color, underline: true).'</w:hyperlink>';
+        }, $products);
+        $label = self::run(__(count($items) === 1 ? 'Product:' : 'Products:', [], $locale).' ', bold: true);
+
+        return self::p(count($items) === 1 ? $label.$items[0] : $label.'<w:r><w:br/></w:r>'.implode('<w:r><w:br/></w:r>', $items));
+    }
+
+    /**
+     * The plan's posts in date order, each with its `day` and `products` as the calendar has them now: the day its post has
+     * (moved to a slot when it was filed, or by the team since) and the products it links (changed with update-post since,
+     * perhaps), else the planned date and products for a post no longer there.
      *
      * @return list<array<string, mixed>>
      */
     private static function posts(Report $report): array
     {
         $posts = $report->meta['posts'];
-        $onCalendar = $report->client->posts()->whereIn('name', array_filter(array_column($posts, 'name')))->whereNotNull('scheduled_at')->pluck('scheduled_at', 'name');
-        $posts = array_map(fn (array $post) => $post + ['day' => CarbonImmutable::parse($onCalendar[$post['name'] ?? ''] ?? $post['date'])->startOfDay()], $posts);
+        $onCalendar = $report->client->posts()->whereIn('name', array_filter(array_column($posts, 'name')))->get(['name', 'scheduled_at', 'settings'])->keyBy('name');
+        $posts = array_map(function (array $post) use ($onCalendar) {
+            $now = $onCalendar[$post['name'] ?? ''] ?? null;
+
+            return ['day' => CarbonImmutable::parse($now?->scheduled_at ?? $post['date'])->startOfDay(), 'products' => $now ? ($now->settings['products'] ?? []) : ($post['products'] ?? [])] + $post;
+        }, $posts);
         usort($posts, fn (array $a, array $b) => $a['day'] <=> $b['day']);
 
         return $posts;
@@ -94,9 +125,9 @@ class TopicsDocx
         return Str::after(self::mainMonth($report)->locale($locale)->isoFormat('D MMMM'), ' ');
     }
 
-    private static function run(string $text, bool $bold = false, ?int $size = null, ?string $color = null, ?string $font = null): string
+    private static function run(string $text, bool $bold = false, ?int $size = null, ?string $color = null, ?string $font = null, bool $underline = false): string
     {
-        $props = ($font ? "<w:rFonts w:ascii=\"{$font}\" w:hAnsi=\"{$font}\" w:cs=\"{$font}\"/>" : '').($bold ? '<w:b/>' : '').($color ? "<w:color w:val=\"{$color}\"/>" : '').($size ? "<w:sz w:val=\"{$size}\"/>" : '');
+        $props = ($font ? "<w:rFonts w:ascii=\"{$font}\" w:hAnsi=\"{$font}\" w:cs=\"{$font}\"/>" : '').($bold ? '<w:b/>' : '').($color ? "<w:color w:val=\"{$color}\"/>" : '').($size ? "<w:sz w:val=\"{$size}\"/>" : '').($underline ? '<w:u w:val="single"/>' : '');
         $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', str_replace("\r", '', $text)); // control characters XML does not allow: Word would not open the file
         $lines = array_map(fn (string $line) => '<w:t xml:space="preserve">'.htmlspecialchars($line, ENT_XML1 | ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'</w:t>', explode("\n", $text));
 
@@ -114,17 +145,25 @@ class TopicsDocx
         return preg_match('/^#?([0-9a-fA-F]{6})$/', trim($brand), $m) ? strtolower($m[1]) : self::DEFAULT_COLOR;
     }
 
-    /** The .docx package: content types, the relationships, default Arial 11pt, the A4 document. */
-    private static function zip(string $body): string
+    /**
+     * The .docx package: content types, the relationships (the styles, then each link to a web page), default Arial 11pt, the A4 document.
+     *
+     * @param  array<string, string>  $links  relationship id => address
+     */
+    private static function zip(string $body, array $links = []): string
     {
         $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
         $w = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+        $hyperlinks = '';
+        foreach ($links as $id => $url) {
+            $hyperlinks .= "<Relationship Id=\"{$id}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink\" Target=\"".htmlspecialchars($url, ENT_XML1 | ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" TargetMode="External"/>';
+        }
         $parts = [
             '[Content_Types].xml' => $xml.'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>',
             '_rels/.rels' => $xml.'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
-            'word/_rels/document.xml.rels' => $xml.'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+            'word/_rels/document.xml.rels' => $xml.'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'.$hyperlinks.'</Relationships>',
             'word/styles.xml' => $xml."<w:styles {$w}><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii=\"Arial\" w:hAnsi=\"Arial\" w:cs=\"Arial\"/><w:sz w:val=\"22\"/><w:szCs w:val=\"22\"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after=\"120\" w:line=\"276\" w:lineRule=\"auto\"/></w:pPr></w:pPrDefault></w:docDefaults></w:styles>",
-            'word/document.xml' => $xml."<w:document {$w}><w:body>{$body}<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"1440\" w:right=\"1440\" w:bottom=\"1440\" w:left=\"1440\" w:header=\"708\" w:footer=\"708\" w:gutter=\"0\"/></w:sectPr></w:body></w:document>",
+            'word/document.xml' => $xml."<w:document {$w} xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><w:body>{$body}<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"1440\" w:right=\"1440\" w:bottom=\"1440\" w:left=\"1440\" w:header=\"708\" w:footer=\"708\" w:gutter=\"0\"/></w:sectPr></w:body></w:document>",
         ];
 
         $path = tempnam(sys_get_temp_dir(), 'docx');
