@@ -2,6 +2,7 @@
 
 use App\Clients\ClientProfile;
 use App\Models\Client;
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\Yaml\Yaml;
@@ -53,6 +54,43 @@ test('the topics of a content plan download as a Word file in the client languag
     $branded = $zip->getFromName('word/document.xml');
     unlink($path);
     expect(substr_count($branded, '<w:color w:val="50c496"/>'))->toBe(2 + count($report->meta['posts']))->and($branded)->not->toContain('212121');
+});
+
+test('each post lists the shop products it links, each name a link to its page, as the calendar post has them now', function () {
+    $client = Client::factory()->create(['name' => 'Dokos Home']);
+    $client->update(['profile' => ['languages' => ['el', 'en'], 'brand_color' => '#1E6FB8'] + $client->profile]);
+    $sheet = ['id' => 1, 'name' => 'Σεντόνι Inventor 160×200', 'url' => 'https://dokoshome.gr/p/sentoni?size=160&color=white', 'price' => '39,90'];
+    $duvet = ['id' => 2, 'name' => 'Πάπλωμα Winter μονό', 'url' => 'https://dokoshome.gr/p/paploma', 'price' => '59,00'];
+    $report = $client->reports()->create(['kind' => 'plan', 'title' => 'Content batch', 'body' => 'sheet', 'meta' => ['window' => ['start' => '2026-12-01', 'end' => '2026-12-31'], 'posts' => [
+        ['name' => 'DOKOS_ONE', 'date' => '2026-12-02', 'platforms' => ['facebook'], 'format' => 'feed', 'title' => 'Winter bedding', 'angle' => 'Warm nights', 'why_now' => 'First frost', 'products' => [$sheet]],
+        ['name' => 'DOKOS_TWO', 'date' => '2026-12-05', 'platforms' => ['instagram'], 'format' => 'carousel', 'title' => 'Gift guide', 'angle' => 'Gifts for the home', 'why_now' => 'Christmas', 'products' => [$sheet]],
+        ['name' => 'DOKOS_GONE', 'date' => '2026-12-09', 'platforms' => ['instagram'], 'format' => 'feed', 'title' => 'Sale', 'angle' => 'Sale', 'why_now' => 'Sale', 'products' => [$duvet, ['id' => 3, 'name' => 'Odd', 'url' => 'javascript:alert(1)']]],
+        ['name' => 'DOKOS_NONE', 'date' => '2026-12-12', 'platforms' => ['instagram'], 'format' => 'feed', 'title' => 'Our shop', 'angle' => 'The shop', 'why_now' => 'Weekend'],
+    ]]]);
+    // on the calendar: the first keeps its product, the second was given two since, the third was deleted for good
+    Post::factory()->create(['client_id' => $client->id, 'name' => 'DOKOS_ONE', 'scheduled_at' => '2026-12-02 10:00', 'settings' => ['products' => [$sheet]]]);
+    Post::factory()->create(['client_id' => $client->id, 'name' => 'DOKOS_TWO', 'scheduled_at' => '2026-12-05 10:00', 'settings' => ['products' => [$duvet, $sheet]]]);
+    Post::factory()->create(['client_id' => $client->id, 'name' => 'DOKOS_NONE', 'scheduled_at' => '2026-12-12 10:00']);
+
+    $path = tempnam(sys_get_temp_dir(), 'docx');
+    file_put_contents($path, $this->actingAs(User::factory()->create())->get(route('reports.word', $report))->assertOk()->streamedContent());
+    $zip = new ZipArchive;
+    $zip->open($path);
+    [$xml, $rels] = [$zip->getFromName('word/document.xml'), $zip->getFromName('word/_rels/document.xml.rels')];
+    unlink($path);
+
+    expect(simplexml_load_string($xml))->not->toBeFalse()->and(simplexml_load_string($rels))->not->toBeFalse();
+    $link = fn (string $id, string $name) => '<w:hyperlink r:id="'.$id.'" w:history="1"><w:r><w:rPr><w:color w:val="1e6fb8"/><w:u w:val="single"/></w:rPr><w:t xml:space="preserve">'.$name.'</w:t></w:r></w:hyperlink>';
+    expect($xml)->toContain('xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"')
+        ->toContain('Προϊόν: </w:t></w:r>'.$link('rId2', 'Σεντόνι Inventor 160×200'))
+        ->toContain('Προϊόντα: </w:t></w:r><w:r><w:br/></w:r>'.$link('rId3', 'Πάπλωμα Winter μονό').'<w:r><w:br/></w:r>'.$link('rId4', 'Σεντόνι Inventor 160×200'))
+        ->toContain('Προϊόν: </w:t></w:r>'.$link('rId5', 'Πάπλωμα Winter μονό')) // a post no longer on the calendar keeps the plan's products
+        ->not->toContain('Odd')->not->toContain('javascript')
+        ->and(substr_count($xml, 'Προϊόν'))->toBe(3); // the post without products has no line
+    expect($rels)->toContain('<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>')
+        ->toContain('<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://dokoshome.gr/p/sentoni?size=160&amp;color=white" TargetMode="External"/>')
+        ->toContain('Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://dokoshome.gr/p/paploma" TargetMode="External"/>')
+        ->not->toContain('rId6');
 });
 
 test('the client form keeps a brand colour as #rrggbb, takes a short or bare one, and refuses what is no colour', function () {

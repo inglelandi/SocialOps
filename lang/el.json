@@ -1100,5 +1100,6 @@
     "Fill in at least one account handle in the profile and save first.": "Συμπλήρωσε τουλάχιστον ένα handle λογαριασμού στο προφίλ και αποθήκευσε πρώτα.",
     "Link the client's Drive folder on the Files page, so Claude reads the previous posts and the reference files.": "Σύνδεσε τον φάκελο Drive του πελάτη στη σελίδα Αρχεία, για να διαβάζει το Claude τις προηγούμενες αναρτήσεις και τα αρχεία αναφοράς.",
     "Admin": "Διαχείριση",
-    "Admin: sees Staff, Settings and Refresh after update": "Διαχειριστής: βλέπει Προσωπικό, Ρυθμίσεις και Ανανέωση μετά την ενημέρωση"
+    "Admin: sees Staff, Settings and Refresh after update": "Διαχειριστής: βλέπει Προσωπικό, Ρυθμίσεις και Ανανέωση μετά την ενημέρωση",
+    "Products:": "Προϊόντα:"
 }
