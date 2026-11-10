@@ -14,7 +14,7 @@ use Symfony\Component\Yaml\Yaml;
 /** Parses and validates a brand profile written in the config/clients/example.yaml format. */
 final class ClientProfile
 {
-    public const SECTIONS = ['accounts', 'languages', 'extra_languages', 'about', 'voice', 'notes', 'pillars', 'hashtags', 'research', 'approval', 'slots', 'saved_replies', 'signatures', 'fields', 'utm', 'webhooks', 'key_dates'];
+    public const SECTIONS = ['accounts', 'languages', 'extra_languages', 'about', 'voice', 'notes', 'pillars', 'hashtags', 'research', 'approval', 'slots', 'saved_replies', 'signatures', 'fields', 'utm', 'webhooks', 'key_dates', 'brand_color'];
 
     public const PLATFORMS = ['instagram', 'facebook', 'tiktok', 'linkedin'];
 
@@ -33,7 +33,7 @@ final class ClientProfile
      */
     public static function parse(string $yaml): array
     {
-        $data = Arr::only(self::parseYaml($yaml), self::SECTIONS) + ['extra_languages' => [], 'about' => [], 'notes' => '', 'slots' => [], 'saved_replies' => [], 'signatures' => [], 'fields' => [], 'utm' => false, 'webhooks' => [], 'key_dates' => [], 'research' => ['sources' => [], 'excluded_domains' => [], 'excluded_topics' => []]];
+        $data = Arr::only(self::parseYaml($yaml), self::SECTIONS) + ['extra_languages' => [], 'about' => [], 'notes' => '', 'slots' => [], 'saved_replies' => [], 'signatures' => [], 'fields' => [], 'utm' => false, 'webhooks' => [], 'key_dates' => [], 'brand_color' => '', 'research' => ['sources' => [], 'excluded_domains' => [], 'excluded_topics' => []]];
 
         $data['accounts'] = self::handles((array) ($data['accounts'] ?? []));
 
@@ -118,6 +118,7 @@ final class ClientProfile
             'utm' => (bool) ($form['utm'] ?? false),
             'webhooks' => array_map(fn ($r) => ['url' => $r['url'], 'secret' => $r['secret'] ?? '', 'events' => array_values((array) ($r['events'] ?? []))], $rows($form['webhooks'] ?? [], fn ($r) => ($r['url'] ?? '') !== '')),
             'key_dates' => $rows($form['key_dates'] ?? [], fn ($r) => ($r['date'] ?? '') !== '' || ($r['label'] ?? '') !== ''),
+            'brand_color' => self::color((string) ($form['brand_color'] ?? '')),
         ];
     }
 
@@ -129,6 +130,17 @@ final class ClientProfile
     public static function handles(array $accounts): array
     {
         return array_map(fn ($v) => array_values(array_filter(array_map(fn ($h) => trim((string) $h), (array) $v), 'strlen')), array_replace(array_fill_keys(self::PLATFORMS, []), Arr::only($accounts, self::PLATFORMS)));
+    }
+
+    /** A colour as typed (#1E6FB8, 1e6fb8, #1e6): lowercase #rrggbb, or '' when empty or no colour at all (the validation then names it). */
+    public static function color(string $value): string
+    {
+        $hex = ltrim(strtolower(trim($value)), '#');
+        if (preg_match('/^[0-9a-f]{3}$/', $hex)) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+
+        return $hex === '' ? '' : '#'.$hex;
     }
 
     /** A pillar name as its key: lowercase, words joined with underscores, Greek letters kept (the file names transliterate them). */
@@ -288,6 +300,7 @@ final class ClientProfile
             'key_dates' => ['present', 'array'],
             'key_dates.*.date' => ['required', 'date'],
             'key_dates.*.label' => ['required', 'string'],
+            'brand_color' => ['nullable', 'string', 'regex:/^#[0-9a-f]{6}$/'],
         ];
     }
 }
