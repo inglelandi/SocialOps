@@ -58,6 +58,8 @@ The same service account reads the reference folders of the **Files** tab (the c
 
 At the top of the Files tab, the **Posts slideshow** is the team's Google Slides file with the posts that will go up for that client (one slide per post with its date and caption, then ideas): share it with the same address (Viewer is enough), or set it to anyone with the link, paste its link and **Link**. It is read at once, every hour and on **Read it now**, and Claude plans around it (D26). A file owned by a colleague's own Google account must be shared by that colleague.
 
+Under it, the **Product feed** is the XML file the client's e-shop makes for Skroutz, BestPrice, Google Shopping or Facebook (whoever runs the e-shop has its link; Skroutz asks every shop for it). Paste the link and **Link**: it is read in the queue, then every day at 05:40 and on **Read the feed now**, and Claude links real, in-stock products from it in the posts it plans (D27). It needs no service account and no key: the link is public by design.
+
 `.env`:
 ```
 GOOGLE_SERVICE_ACCOUNT_JSON=/var/www/vhosts/AGENCY-DOMAIN/socialops-drive.json

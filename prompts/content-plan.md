@@ -47,6 +47,10 @@ These are the posts the client published before Social Ops and its own content c
 Facts the client wrote down (menus, prices, services, rooms, events, guidelines, earlier briefs): plan from these exactly as from "About the client", never invent beyond them; when they contradict About, prefer the newer file and say so in notes_for_reviewer.
 {{reference}}
 
+## The client's shop (its product feed)
+When a post is about a product or a range, link real products from the shop: find them with the find-products tool (the client and words from the post's topic) and list their ids in the post's products. In the captions, put a product's link exactly as the tool gives it on Facebook; on Instagram write "link in bio" or put the link in the first comment, never in the caption. Link only products the tool returns, in stock, that fit the post; never invent a product, a link or a price, and name a price only when the team's instruction or the client's facts ask for it. Without a shop here, or without the tool, no product links.
+{{products}}
+
 ## Past designs from the client's folder (described from the images)
 These are posts the client published before, seen from their graphics (one line each, newest first: the Drive date, the file, what it showed and the text on it): do not repeat their offers or hooks; keep the recurring formats and seasons.
 {{designs}}

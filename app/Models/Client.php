@@ -126,6 +126,12 @@ class Client extends Model
         return $this->hasMany(ClientDocument::class);
     }
 
+    /** The products of the client's shop, from its product feed (the Files tab), for Claude to link in posts. */
+    public function products(): HasMany
+    {
+        return $this->hasMany(ClientProduct::class);
+    }
+
     /**
      * The brand profile in the shape of config/clients/example.yaml,
      * for the caption prompt and the publishing drivers.

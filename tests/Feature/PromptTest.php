@@ -38,7 +38,7 @@ it('renders the trend and plan prompts with key dates as bullet lines', function
         ->toContain('Extra information about the client: Family business since 1987.')
         ->toContain('place 25%, food_drink 25%')
         ->toContain('written in Greek');
-    expect(Prompt::render('content-plan', $vars + ['quota' => 'place: 2, offers: 1', 'instruction' => '', 'trend_brief' => 'BRIEF', 'recent' => [], 'upcoming_posts' => '', 'previous_posts' => '', 'reference' => '', 'designs' => '']))
+    expect(Prompt::render('content-plan', $vars + ['quota' => 'place: 2, offers: 1', 'instruction' => '', 'trend_brief' => 'BRIEF', 'recent' => [], 'upcoming_posts' => '', 'products' => '', 'previous_posts' => '', 'reference' => '', 'designs' => '']))
         ->toContain('Posts per pillar (exact): place: 2, offers: 1')
         ->toContain('What the client wants from social media now: Fill the sunset tables')
         ->toContain("## Trend brief\nBRIEF")

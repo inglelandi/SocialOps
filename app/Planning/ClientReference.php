@@ -4,6 +4,7 @@ namespace App\Planning;
 
 use App\Models\Client;
 use App\Models\ClientDocument;
+use App\Models\ClientProduct;
 use Illuminate\Support\Collection;
 
 /**
@@ -32,11 +33,11 @@ final class ClientReference
     public const DESIGNS_EACH = ClientDocument::DESCRIPTION_MAX;
 
     /**
-     * @return array{upcoming_posts: string, slideshow: ?array{name: string, url: string, synced_at: ?string, modified: ?string, chars: int, error: ?string}, previous_posts: string, reference: string, designs: string, designs_described: int, designs_waiting: int, files: list<array{name: string, path: string, kind: string, chars: int, modified: ?string, error: ?string}>, folder: ?array{name: string, synced_at: ?string}}
+     * @return array{products: string, upcoming_posts: string, slideshow: ?array{name: string, url: string, synced_at: ?string, modified: ?string, chars: int, error: ?string}, previous_posts: string, reference: string, designs: string, designs_described: int, designs_waiting: int, files: list<array{name: string, path: string, kind: string, chars: int, modified: ?string, error: ?string}>, folder: ?array{name: string, synced_at: ?string}}
      */
     public static function for(Client $client): array
     {
-        $slideshow = self::slideshow($client);
+        $slideshow = ['products' => ClientProduct::summary($client)] + self::slideshow($client); // the shop in a few lines, '' without a product feed
         $folder = $client->accounts()->where('platform', 'drive_docs')->first();
         if (! $folder) {
             return $slideshow + ['previous_posts' => '', 'reference' => '', 'designs' => '', 'designs_described' => 0, 'designs_waiting' => 0, 'files' => [], 'folder' => null];

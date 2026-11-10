@@ -34,6 +34,7 @@ class ContentPlanner
                 'trend_brief' => $trendBrief,
                 'recent' => $recent,
                 'upcoming_posts' => $reference['upcoming_posts'] ?? '',
+                'products' => $reference['products'] ?? '',
                 'previous_posts' => $reference['previous_posts'] ?? '',
                 'reference' => $reference['reference'] ?? '',
                 'designs' => $reference['designs'] ?? '',

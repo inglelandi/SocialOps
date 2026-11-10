@@ -38,7 +38,7 @@ class Post extends Model
     public const CONTENT_FIELDS = ['platforms', 'format', 'pillar', 'brief', 'settings'];
 
     /** Settings that say how the post is planned, not what the client approved: changing only these keeps an approved post approved (every repeated copy goes through approval itself). */
-    public const PLANNING_SETTINGS = ['repeat', 'repeated_as'];
+    public const PLANNING_SETTINGS = ['repeat', 'repeated_as', 'products'];
 
     /** Instagram's limit on collab invites per post. */
     public const MAX_COLLABORATORS = 3;

@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Drafting\CaptionDrafter;
+use App\Models\ClientProduct;
 use App\Planning\Prompt;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -19,13 +20,17 @@ class GetCaptionBrief extends Tool
     {
         $post = $this->post($request->validate(['post' => ['required', 'integer']])['post']);
         $vars = CaptionDrafter::postVars($post);
+        $shop = ClientProduct::summary($post->client);
 
         return Response::json([
             'post' => ['id' => $post->id, 'name' => $post->name, 'state' => $post->state->value, 'platforms' => $post->platforms, 'format' => $post->format],
             'current_captions' => $post->toApiArray()['captions'],
             'max_characters' => array_intersect_key(CaptionDrafter::MAX_LENGTH, array_flip($post->platforms)),
             'prompt' => Prompt::render('caption-draft', Prompt::profileVars($post->client->toProfileArray()) + ['post' => $vars['post'] + ['photo' => 'none'], 'examples' => $vars['examples'] ?: 'none yet']),
-            'then' => "Call update-post with post {$post->id}, variants {platform: {el: {caption, alt_text, hashtags: []}, en: {...}}} for every platform of the post (no alt_text for tiktok) and settings {design: {el, en}}; tell the team your notes_for_reviewer.",
+            'products' => $post->settings['products'] ?? [],
+            'shop' => $shop !== '' ? $shop : null,
+            'then' => "Call update-post with post {$post->id}, variants {platform: {el: {caption, alt_text, hashtags: []}, en: {...}}} for every platform of the post (no alt_text for tiktok) and settings {design: {el, en}}; tell the team your notes_for_reviewer."
+                .($shop !== '' ? ' The client has a shop: when the post is about a product or a range, find real ones with find-products, link them (Facebook: the url in the caption as it is; Instagram: "link in bio" or the url in the first comment, never in the caption) and send their ids as products in update-post. Never invent a product, a link or a price.' : ''),
         ]);
     }
 

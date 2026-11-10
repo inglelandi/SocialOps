@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Models\ClientProduct;
 use App\Models\Post;
 use App\Planning\ClaudeQueue;
 use App\Planning\PlanRequest;
@@ -54,6 +55,8 @@ class SavePlan extends Tool
             'posts.*.captions.design' => ['nullable', 'array'],
             'posts.*.captions.design.*' => ['nullable', 'string'],
             'posts.*.captions.notes_for_reviewer' => ['nullable', 'string'],
+            'posts.*.products' => ['nullable', 'array', 'max:'.ClientProduct::PER_POST],
+            'posts.*.products.*' => ['integer'],
             ...collect($languages)->mapWithKeys(fn ($lang) => ["posts.*.captions.{$lang}" => ['nullable', 'array'], "posts.*.captions.{$lang}.*" => ['nullable', 'string']])->all(),
         ])->validate();
         // the post form's limits: a Draft with a longer caption could not be saved again, in the app or with update-post
@@ -61,8 +64,28 @@ class SavePlan extends Tool
             throw ValidationException::withMessages($tooLong);
         }
 
+        // the shop's products a post links, by the ids find-products gave: kept on the Draft as they are now
+        $ids = collect($input['posts'])->pluck('products')->flatten()->filter()->unique()->values();
+        $found = $ids->isEmpty() ? collect() : $client->products()->whereIn('id', $ids)->get()->keyBy('id');
+        $unknown = [];
+        foreach ($input['posts'] as $i => $post) {
+            foreach ($post['products'] ?? [] as $n => $id) {
+                if (! $found->has($id)) {
+                    $unknown["posts.$i.products.$n"] = "\"{$post['title']}\": product {$id} is not in {$client->name}'s shop. Use the ids find-products gives.";
+                }
+            }
+        }
+        if ($unknown) {
+            throw ValidationException::withMessages($unknown);
+        }
+
         // no default for fixed_date: PlanWriter::keepsDay() reads an absent flag as "decide from the client's holidays"
-        $posts = array_map(fn (array $post) => $post + ['pillar' => null, 'trend_signal' => null, 'why_now' => '', 'asset_brief' => '', 'caption_brief' => ''], $input['posts']);
+        $posts = array_map(function (array $post) use ($found) {
+            $products = array_map(fn ($id) => $found[$id]->snapshot(), array_values(array_unique($post['products'] ?? [])));
+            unset($post['products']);
+
+            return $post + ['pillar' => null, 'trend_signal' => null, 'why_now' => '', 'asset_brief' => '', 'caption_brief' => ''] + ($products ? ['products' => $products] : []);
+        }, $input['posts']);
         $dates = array_column($posts, 'date');
         $result = [
             'client' => $client->slug,
@@ -132,7 +155,7 @@ class SavePlan extends Tool
             'client' => $schema->string()->description('Client id or slug')->required(),
             'job' => $schema->integer()->description('The plan job from list-claude-jobs this plan answers; it leaves the queue'),
             'trend_brief' => $schema->string()->description('The trend research the plan rests on, Markdown; filed in the client\'s reports'),
-            'posts' => $schema->array()->items($schema->object()->description('date (YYYY-MM-DD), platforms [], format, pillar, title, angle, trend_signal (or null), why_now, asset_brief, caption_brief, fixed_date (true when the post is about that specific day: a holiday, a name day, an event, an opening, an anniversary; it then keeps its date instead of moving to a posting slot; false or absent otherwise), captions {el: {instagram: "...", facebook: "..."}, en: {...}, hashtags: ["#chania"], alt_text: {el: "...", en: "..."}, design: {el: "...", en: "..."}, notes_for_reviewer: "..."}'))->min(1)->required(),
+            'posts' => $schema->array()->items($schema->object()->description('date (YYYY-MM-DD), platforms [], format, pillar, title, angle, trend_signal (or null), why_now, asset_brief, caption_brief, fixed_date (true when the post is about that specific day: a holiday, a name day, an event, an opening, an anniversary; it then keeps its date instead of moving to a posting slot; false or absent otherwise), products (ids of the client\'s shop products the post links, from find-products, at most 10), captions {el: {instagram: "...", facebook: "..."}, en: {...}, hashtags: ["#chania"], alt_text: {el: "...", en: "..."}, design: {el: "...", en: "..."}, notes_for_reviewer: "..."}'))->min(1)->required(),
         ];
     }
 }

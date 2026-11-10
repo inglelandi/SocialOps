@@ -57,6 +57,7 @@ class ClientController extends Controller
                 'waiting' => ClaudeQueue::designs()->where('client_id', $client->id)->count(),
             ] : null,
             'slideshow' => $client->accounts()->where('platform', 'drive_slides')->first(),
+            'productCount' => $client->products()->count(),
         ]);
     }
 
