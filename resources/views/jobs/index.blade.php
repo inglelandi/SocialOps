@@ -27,7 +27,7 @@
                                         <span class="font-medium text-gray-900">{{ __('Captions') }}:</span> <a class="font-medium text-gray-900 hover:text-brand-600" href="{{ route('posts.edit', $request) }}">{{ $request->name }}</a>
                                     @endif
                                 </td>
-                                <td class="{{ $td }} whitespace-nowrap"><a class="font-medium text-gray-900 hover:text-brand-600" href="{{ route('clients.edit', $request->client) }}">{{ $request->client->name }}</a></td>
+                                <td class="{{ $td }} whitespace-nowrap"><a class="font-medium text-gray-900 hover:text-brand-600" href="{{ route('clients.planner', $request->client) }}">{{ $request->client->name }}</a></td>
                                 <td class="{{ $td }} whitespace-nowrap tabular-nums">{{ $at->format('d-m-Y H:i') }} <span class="text-gray-600">· {{ $at->diffForHumans() }}</span>
                                     @if (\App\Planning\ClaudeQueue::isLate($request)) <span class="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-800">{{ __('over 2 hours') }}</span>@endif
                                 </td>

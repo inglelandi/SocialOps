@@ -9,7 +9,7 @@ test('a login limited to some clients sees only them everywhere, and only an unl
     $b = Client::factory()->create(['name' => 'Blue Villa']);
     $postA = Post::factory()->create(['client_id' => $a->id, 'scheduled_at' => now()->addDay()]);
     $postB = Post::factory()->create(['client_id' => $b->id, 'scheduled_at' => now()->addDay()]);
-    $admin = User::factory()->create();
+    $admin = User::factory()->create(['is_admin' => true]);
 
     $this->actingAs($admin)->post('/staff', ['name' => 'Eleni', 'email' => 'eleni@example.com', 'password' => 'twelve-chars-long', 'client_ids' => [$a->id]])->assertRedirect('/staff');
     $eleni = User::where('email', 'eleni@example.com')->firstOrFail();

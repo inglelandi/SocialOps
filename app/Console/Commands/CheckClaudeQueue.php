@@ -20,7 +20,7 @@ class CheckClaudeQueue extends Command
         foreach (ClaudeQueue::late()->reject(fn (Post|Report $request) => ClaudeQueue::alerted($request)) as $request) {
             $at = ClaudeQueue::askedAt($request)->format('d-m-Y H:i');
             [$what, $url] = $request instanceof Report
-                ? ["the plan request \"{$request->title}\"", route('clients.edit', $request->client_id)]
+                ? ["the plan request \"{$request->title}\"", route('clients.planner', $request->client_id)]
                 : ["the captions of {$request->name}", route('posts.edit', $request)];
             $this->info($line = "{$request->client->name}: Claude has not picked up {$what}, queued {$at}. Check that the scheduled task is on.");
             Slack::send($line."\n".$url);

@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\InboxUploadRequest;
 use App\Jobs\AssembleReel;
-use App\Media\Canva;
-use App\Media\GoogleDrive;
 use App\Media\ReelAssembler;
 use App\Models\Asset;
 use App\Models\Client;
@@ -15,11 +13,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
-use RuntimeException;
 use Symfony\Component\HttpFoundation\Response as BaseResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
@@ -46,47 +41,7 @@ class AssetController extends Controller
         $clips = $client->assets()->whereIn('id', $data['clips'])->orderBy('original_name')->orderBy('id')->pluck('id')->all();
         AssembleReel::dispatch($client, $clips, (int) $data['seconds'], (string) ($data['headline'] ?? ''), $data['pillar'] ?? null);
 
-        return redirect()->route('clients.assets', $client)->with('status', __('Assembling the Reel, it lands in this inbox in a minute or two'));
-    }
-
-    public function index(Request $request, Client $client, Canva $canva): View
-    {
-        $canvaAccount = $client->accounts()->where('platform', 'canva')->first();
-        $designs = $canvaError = null;
-        if ($canvaAccount && $request->has('canva')) {
-            try {
-                $designs = $canva->designs($canvaAccount, $request->input('canva') ?: null);
-            } catch (RuntimeException $e) {
-                [$designs, $canvaError] = [[], $e->getMessage()];
-            }
-        }
-        $usedBy = fn ($q) => $q->withTrashed(); // a post in the recycle bin still uses its media
-        $term = trim((string) $request->input('q'));
-
-        return view('clients.assets', [
-            'client' => $client,
-            'assets' => $client->assets()->with(['posts' => $usedBy])
-                ->when($request->input('kind'), fn ($q, $kind) => $q->where('kind', $kind))
-                ->when($request->input('pillar'), fn ($q, $pillar) => $q->where('pillar', $pillar))
-                ->when($request->input('used') === 'yes', fn ($q) => $q->whereHas('posts', $usedBy))
-                ->when($request->input('used') === 'no', fn ($q) => $q->whereDoesntHave('posts', $usedBy))
-                // the name, the file's own name and the tags; a pillar typed as shown ("food drink") finds food_drink
-                ->when($term !== '', fn ($q) => $q->where(fn ($w) => $w->where('name', 'like', "%$term%")->orWhere('original_name', 'like', "%$term%")
-                    ->orWhere('season', 'like', "%$term%")->orWhere('note', 'like', "%$term%")->orWhere('pillar', 'like', '%'.str_replace(' ', '_', $term).'%')))
-                ->latest()->latest('id')->get(),
-            'filtered' => (bool) array_filter($request->only(self::FILTERS)),
-            'videos' => $client->assets()->where('kind', 'video')->orderBy('original_name')->orderBy('id')->get(), // the Reel tool's clips, in the order they play
-            'inboxUrl' => URL::temporarySignedRoute('inbox.show', now()->addDays(self::LINK_DAYS), ['client' => $client->slug]),
-            'canva' => $canvaAccount,
-            'drive' => $client->accounts()->where('platform', 'drive')->first(),
-            'driveEmail' => GoogleDrive::email(),
-            'dropbox' => $client->accounts()->where('platform', 'dropbox')->first(),
-            'dropboxReady' => (bool) config('services.dropbox.app_key'),
-            'canvaReady' => (bool) config('services.canva.client_id'),
-            'reelReady' => ReelAssembler::binary() !== null,
-            'designs' => $designs,
-            'canvaError' => $canvaError,
-        ]);
+        return redirect()->route('clients.assets', $client)->with('status', __('Assembling the Reel, it lands in this inbox in a minute or two'))->with('tab', 'reel');
     }
 
     /**

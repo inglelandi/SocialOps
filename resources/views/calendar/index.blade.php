@@ -39,6 +39,10 @@
                     @foreach (['month' => __('Month'), 'week' => __('Week'), 'list' => __('List')] as $one => $label)
                         <a class="inline-flex items-center gap-1.5 rounded-md px-3 py-1 {{ $view === $one ? 'bg-white font-medium text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}" href="{{ route('calendar', [...$span, 'view' => $one]) }}"><x-icon :name="['month' => 'calendar-days', 'week' => 'calendar', 'list' => 'list-bullet'][$one]" class="h-4 w-4" />{{ $label }}</a>
                     @endforeach
+                    @if ($client)
+                        {{-- the client's Instagram grid as it will look: a view of the same posts --}}
+                        <a class="inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-gray-600 hover:text-gray-900" href="{{ route('clients.grid', $client) }}" data-view="grid"><x-icon name="squares-2x2" class="h-4 w-4" />{{ __('Grid') }}</a>
+                    @endif
                 </span>
                 {{-- the everyday filters stay in view; the date range, platform and pillar wait behind "More filters" and open by themselves when one is in use --}}
                 <form method="GET" action="{{ route('calendar') }}" class="flex flex-wrap items-center gap-2 sm:ml-auto" x-data="{ more: {{ $range || filled($filters['platform'] ?? null) || filled($filters['pillar'] ?? null) ? 'true' : 'false' }} }">
@@ -46,8 +50,8 @@
                     <input type="date" name="date" value="{{ $date->toDateString() }}" onchange="this.form.from.value = this.form.to.value = ''; this.form.submit()" title="{{ __('Go to a date') }}" class="{{ $input }}">
                     <select name="client" onchange="this.form.submit()" class="{{ $input }}">
                         <option value="">{{ __('All clients') }}</option>
-                        @foreach ($clients as $client)
-                            <option value="{{ $client->slug }}" @selected($clientSlug === $client->slug)>{{ $client->name }}</option>
+                        @foreach ($clients as $other)
+                            <option value="{{ $other->slug }}" @selected($clientSlug === $other->slug)>{{ $other->name }}</option>
                         @endforeach
                     </select>
                     <select name="state" onchange="this.form.submit()" class="{{ $input }}">
@@ -122,6 +126,10 @@
                     @php($on = ($filters['state'] ?? '') === $state->value)
                     <a href="{{ route('calendar', [...$filters, 'state' => $on ? null : $state->value, 'view' => $view, 'client' => $clientSlug, ...$when]) }}"><x-state-badge :state="$state" :class="$on ? 'ring-2 ring-gray-800' : ''" /></a>
                 @endforeach
+                @if ($client)
+                    @php($binned = $client->posts()->onlyTrashed()->count())
+                    <a href="{{ route('clients.bin', $client) }}" class="ml-auto inline-flex items-center gap-1 font-medium text-gray-900 hover:text-brand-600" data-bin><x-icon name="trash" class="h-4 w-4" />{{ __('Recycle bin') }}@if ($binned) ({{ $binned }})@endif</a>
+                @endif
             </p>
         </div>
     </div>

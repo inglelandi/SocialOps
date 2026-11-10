@@ -1,12 +1,12 @@
 @php
     // Same tab row on every page of a client; the switcher (phones: the side navigation lists the clients on wider screens) keeps the page when the route is client-scoped.
     $name = request()->route()->getName();
-    $switch = fn ($c) => in_array($name, ['clients.assets', 'clients.files', 'clients.grid', 'clients.reviews', 'clients.deadlines', 'clients.comments', 'clients.accounts', 'clients.reports', 'clients.edit', 'clients.bin', 'posts.create']) ? route($name, $c) : route('calendar', ['client' => $c->slug]);
+    $switch = fn ($c) => in_array($name, ['clients.assets', 'clients.files', 'clients.grid', 'clients.planner', 'clients.reviews', 'clients.deadlines', 'clients.comments', 'clients.accounts', 'clients.reports', 'clients.edit', 'clients.bin', 'posts.create']) ? route($name, $c) : route('calendar', ['client' => $c->slug]);
+    $binned = $client->posts()->onlyTrashed()->count(); // the Recycle bin tab shows only while it holds posts (the calendar links it always)
     $tabs = [
-        [__('Calendar'), route('calendar', ['client' => $client->slug]), request()->routeIs('calendar', 'posts.*'), null, 'calendar-days'],
-        [__('Assets'), route('clients.assets', $client), request()->routeIs('clients.assets'), null, 'photo'],
-        [__('Files'), route('clients.files', $client), request()->routeIs('clients.files'), $client->documents()->where('chars', '>', 0)->whereNot('kind', 'design')->count(), 'folder-open'], // the documents read from the client's Drive folder (its designs are counted on the tab)
-        [__('Grid'), route('clients.grid', $client), request()->routeIs('clients.grid'), null, 'squares-2x2'],
+        [__('Calendar'), route('calendar', ['client' => $client->slug]), request()->routeIs('calendar', 'posts.*', 'clients.grid'), null, 'calendar-days'], // the Instagram grid is one of the calendar's views
+        [__('Plan with Claude'), route('clients.planner', $client), request()->routeIs('clients.planner'), $client->reports()->where('kind', 'claude_job')->count(), 'sparkles'], // the plan requests still waiting for Claude
+        [__('Files'), route('clients.files', $client), request()->routeIs('clients.files', 'clients.assets'), null, 'folder-open'], // the photos and videos and what Claude reads
         [__('Approvals'), route('clients.reviews', $client), request()->routeIs('clients.reviews'), $client->posts()->where('state', \App\Posts\PostState::InReview)->count(), 'check-badge'],
         [__('Deadlines'), route('clients.deadlines', $client), request()->routeIs('clients.deadlines'), $client->deadlines()->dueSoon()->count(), 'flag'],
         ...(config('features.publishing') ? [
@@ -15,7 +15,7 @@
         ] : []),
         [__('Reports'), route('clients.reports', $client), request()->routeIs('clients.reports', 'reports.show'), null, 'chart-bar'],
         [__('Profile'), route('clients.edit', $client), request()->routeIs('clients.edit'), null, 'identification'],
-        [__('Recycle bin'), route('clients.bin', $client), request()->routeIs('clients.bin'), null, 'trash'],
+        ...($binned || request()->routeIs('clients.bin') ? [[__('Recycle bin'), route('clients.bin', $client), request()->routeIs('clients.bin'), $binned, 'trash']] : []),
     ];
 @endphp
 <nav class="mt-4 flex items-center gap-1 overflow-x-auto text-sm" aria-label="{{ $client->name }}">

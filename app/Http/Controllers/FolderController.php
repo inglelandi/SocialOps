@@ -76,13 +76,13 @@ class FolderController extends Controller
         abort_unless(isset(PullFolder::SOURCES[$platform]), 404);
         PullFolder::dispatch($client->accounts()->where('platform', $platform)->whereNotNull('meta')->firstOrFail());
 
-        return redirect()->route('clients.assets', $client)->with('status', __('Checking the folder now, new files land in a minute or two'));
+        return redirect()->route('clients.assets', $client)->with('status', __('Checking the folder now, new files land in a minute or two'))->with('tab', 'sources');
     }
 
     private function watching($account, string $name): RedirectResponse
     {
         PullFolder::dispatch($account);
 
-        return redirect()->route('clients.assets', $account->client_id)->with('status', __('Now watching “:name”, its files are on their way', ['name' => $name]));
+        return redirect()->route('clients.assets', $account->client_id)->with('status', __('Now watching “:name”, its files are on their way', ['name' => $name]))->with('tab', 'sources');
     }
 }

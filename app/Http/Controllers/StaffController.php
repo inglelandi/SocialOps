@@ -8,7 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
-/** Staff logins. The first one is made on /setup (only while there are no users), the rest on the Staff page. */
+/** Staff logins. The first one is made on /setup (only while there are no users), the rest on the Staff page, which only admins reach (routes/web.php). */
 class StaffController extends Controller
 {
     public function index()
@@ -43,11 +43,7 @@ class StaffController extends Controller
     public function update(Request $request, User $user)
     {
         abort_if($user->is($request->user()), 422, 'You cannot limit your own login.');
-        abort_if($user->is_admin && ! $request->user()->is_admin, 403, 'Only an admin can change an admin login.');
-        $user->update(['client_ids' => $this->clientIds($request)]);
-        if ($request->user()->is_admin) {
-            $user->forceFill(['is_admin' => $request->boolean('is_admin')])->save();
-        }
+        $user->forceFill(['client_ids' => $this->clientIds($request), 'is_admin' => $request->boolean('is_admin')])->save();
 
         return redirect()->route('staff.index')->with('status', 'login-updated');
     }
@@ -55,7 +51,6 @@ class StaffController extends Controller
     public function destroy(Request $request, User $user)
     {
         abort_if($user->is($request->user()), 422, 'You cannot remove your own login.');
-        abort_if($user->is_admin && ! $request->user()->is_admin, 403, 'Only an admin can remove an admin login.');
         $user->delete();
 
         return redirect()->route('staff.index')->with('status', 'login-removed');

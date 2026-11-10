@@ -309,7 +309,7 @@
     </x-field>
 </x-section>
 
-<div class="mt-4 flex items-center gap-4" x-show="!['plan', 'import'].includes(tab)">
+<div class="mt-4 flex items-center gap-4">
     <x-primary-button><x-icon name="check" class="h-4 w-4" />{{ __('Save') }}</x-primary-button>
     <a href="{{ route('clients.index') }}" class="text-sm text-gray-600 hover:text-gray-900">{{ __('Cancel') }}</a>
     @if (session('status') === 'client-updated')

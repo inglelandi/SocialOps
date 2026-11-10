@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Jobs\SyncClientDocuments;
 use App\Jobs\SyncProductFeed;
+use App\Media\Canva;
 use App\Media\GoogleDrive;
+use App\Media\ReelAssembler;
 use App\Models\Client;
 use App\Models\ClientDocument;
 use App\Models\ClientProduct;
@@ -12,15 +14,18 @@ use App\Products\ProductFeed;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use RuntimeException;
 
 /**
- * The Files tab: the team's posts slideshow of the client (an accounts row with platform drive_slides: one Google Slides
- * file with the posts prepared to go up) and its reference folder on Google Drive (platform drive_docs), with what was read
- * from them, so Claude plans around the prepared posts and from the client's previous posts, reference files and past
- * designs. Separate from the photo inbox folder. The designs' previews come from Drive on each view and are never kept here.
+ * The client's Files page, one side list (Panos, 2026-11-10: "the assets and files should be one … as side menu like the
+ * profile"): the photos and videos (the asset inbox), the other ways in (the client's upload link, Drive, Dropbox, Canva)
+ * and the Reel maker, then what Claude reads when it plans: the team's posts slideshow (an accounts row with platform
+ * drive_slides), the reference folder on Google Drive (drive_docs, separate from the photo inbox folder) with its documents
+ * and designs, and the shop's product feed. The designs' previews come from Drive on each view and are never kept here.
+ * Actions redirect with `tab` in the session, so the page opens on the section they belong to.
  */
 class ClientFilesController extends Controller
 {
@@ -30,7 +35,8 @@ class ClientFilesController extends Controller
     /** Products listed on the tab while nothing is searched, by name. */
     public const PRODUCTS_SHOWN = 30;
 
-    public function index(Request $request, Client $client): View
+    /** The page; /clients/{id}/assets is the same page, opened on the photos and videos. */
+    public function index(Request $request, Client $client, Canva $canva): View
     {
         $folder = $client->accounts()->where('platform', 'drive_docs')->first();
         $order = array_flip(array_keys(ClientDocument::KINDS));
@@ -41,10 +47,11 @@ class ClientFilesController extends Controller
 
         $slideshow = $client->accounts()->where('platform', 'drive_slides')->first();
         $feed = $client->accounts()->where('platform', 'product_feed')->first();
-        $productQuery = trim((string) $request->query('q', ''));
+        $productQuery = trim((string) $request->query('product', '')); // not q: that is the photo search of the same page
 
-        return view('clients.files', [
+        return view('clients.files', $this->media($request, $client, $canva) + [
             'client' => $client,
+            'section' => $request->routeIs('clients.assets') ? 'media' : null,
             'slideshow' => $slideshow,
             'slideshowDocument' => $slideshow?->documents()->first(),
             'feed' => $feed,
@@ -63,6 +70,46 @@ class ClientFilesController extends Controller
         ]);
     }
 
+    /** The photos and videos with the grid's filters (AssetController::FILTERS), the other ways in and the Reel maker's clips. */
+    private function media(Request $request, Client $client, Canva $canva): array
+    {
+        $canvaAccount = $client->accounts()->where('platform', 'canva')->first();
+        $canvaDesigns = $canvaError = null;
+        if ($canvaAccount && $request->has('canva')) {
+            try {
+                $canvaDesigns = $canva->designs($canvaAccount, $request->input('canva') ?: null);
+            } catch (RuntimeException $e) {
+                [$canvaDesigns, $canvaError] = [[], $e->getMessage()];
+            }
+        }
+        $usedBy = fn ($q) => $q->withTrashed(); // a post in the recycle bin still uses its media
+        $term = trim((string) $request->input('q'));
+
+        return [
+            'assets' => $client->assets()->with(['posts' => $usedBy])
+                ->when($request->input('kind'), fn ($q, $kind) => $q->where('kind', $kind))
+                ->when($request->input('pillar'), fn ($q, $pillar) => $q->where('pillar', $pillar))
+                ->when($request->input('used') === 'yes', fn ($q) => $q->whereHas('posts', $usedBy))
+                ->when($request->input('used') === 'no', fn ($q) => $q->whereDoesntHave('posts', $usedBy))
+                // the name, the file's own name and the tags; a pillar typed as shown ("food drink") finds food_drink
+                ->when($term !== '', fn ($q) => $q->where(fn ($w) => $w->where('name', 'like', "%$term%")->orWhere('original_name', 'like', "%$term%")
+                    ->orWhere('season', 'like', "%$term%")->orWhere('note', 'like', "%$term%")->orWhere('pillar', 'like', '%'.str_replace(' ', '_', $term).'%')))
+                ->latest()->latest('id')->get(),
+            'assetTotal' => $client->assets()->count(),
+            'filtered' => (bool) array_filter($request->only(AssetController::FILTERS)),
+            'videos' => $client->assets()->where('kind', 'video')->orderBy('original_name')->orderBy('id')->get(), // the Reel tool's clips, in the order they play
+            'inboxUrl' => URL::temporarySignedRoute('inbox.show', now()->addDays(AssetController::LINK_DAYS), ['client' => $client->slug]),
+            'canva' => $canvaAccount,
+            'drive' => $client->accounts()->where('platform', 'drive')->first(),
+            'dropbox' => $client->accounts()->where('platform', 'dropbox')->first(),
+            'dropboxReady' => (bool) config('services.dropbox.app_key'),
+            'canvaReady' => (bool) config('services.canva.client_id'),
+            'reelReady' => ReelAssembler::binary() !== null,
+            'canvaDesigns' => $canvaDesigns,
+            'canvaError' => $canvaError,
+        ];
+    }
+
     /** Link a folder: checked as the service account, kept as the client's drive_docs row, read right away. A new folder forgets the old one's files. */
     public function link(Request $request, Client $client, GoogleDrive $drive): RedirectResponse
     {
@@ -79,7 +126,7 @@ class ClientFilesController extends Controller
         }
         SyncClientDocuments::dispatch($account);
 
-        return redirect()->route('clients.files', $client)->with('status', __('Linked “:name”, its files are being read', ['name' => $folder['name']]));
+        return redirect()->route('clients.files', $client)->with('status', __('Linked “:name”, its files are being read', ['name' => $folder['name']]))->with('tab', 'folder');
     }
 
     /**
@@ -101,14 +148,14 @@ class ClientFilesController extends Controller
         }
         SyncClientDocuments::dispatchSync($account);
 
-        return redirect()->route('clients.files', $client)->with('status', __('Linked “:name”, Claude reads it when it plans this client', ['name' => $file['name']]));
+        return redirect()->route('clients.files', $client)->with('status', __('Linked “:name”, Claude reads it when it plans this client', ['name' => $file['name']]))->with('tab', 'slideshow');
     }
 
     public function syncSlideshow(Client $client): RedirectResponse
     {
         SyncClientDocuments::dispatchSync($client->accounts()->where('platform', 'drive_slides')->firstOrFail());
 
-        return redirect()->route('clients.files', $client)->with('status', __('Slideshow read again'));
+        return redirect()->route('clients.files', $client)->with('status', __('Slideshow read again'))->with('tab', 'slideshow');
     }
 
     /**
@@ -129,21 +176,21 @@ class ClientFilesController extends Controller
         }
         SyncProductFeed::dispatch($account);
 
-        return redirect()->route('clients.files', $client)->with('status', __('Linked the product feed of :host, its products are being read', ['host' => $account->name]));
+        return redirect()->route('clients.files', $client)->with('status', __('Linked the product feed of :host, its products are being read', ['host' => $account->name]))->with('tab', 'feed');
     }
 
     public function syncFeed(Client $client): RedirectResponse
     {
         SyncProductFeed::dispatch($client->accounts()->where('platform', 'product_feed')->firstOrFail());
 
-        return redirect()->route('clients.files', $client)->with('status', __('Reading the product feed now, the list refreshes in a minute or two'));
+        return redirect()->route('clients.files', $client)->with('status', __('Reading the product feed now, the list refreshes in a minute or two'))->with('tab', 'feed');
     }
 
     public function sync(Client $client): RedirectResponse
     {
         SyncClientDocuments::dispatch($client->accounts()->where('platform', 'drive_docs')->firstOrFail());
 
-        return redirect()->route('clients.files', $client)->with('status', __('Reading the folder now, the list refreshes in a minute or two'));
+        return redirect()->route('clients.files', $client)->with('status', __('Reading the folder now, the list refreshes in a minute or two'))->with('tab', 'folder');
     }
 
     /** The team says what a file is for (a document: previous posts, reference or not used; a design: design or not used); a sync never changes it again. */
@@ -152,7 +199,7 @@ class ClientFilesController extends Controller
         $kind = $request->validate(['kind' => ['required', Rule::in(array_keys($document->kindChoices()))]])['kind'];
         $document->update(['kind' => $kind, 'kind_set_by_user' => true]);
 
-        return redirect()->route('clients.files', $client);
+        return redirect()->route('clients.files', $client)->with('tab', $document->isDesign() ? 'designs' : 'folder');
     }
 
     /** A design's preview as Drive makes it, passed through for the tab: nothing is written to disk, the cache or the database. */

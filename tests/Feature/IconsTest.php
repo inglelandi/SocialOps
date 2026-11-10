@@ -43,7 +43,7 @@ test('the navigation, the client tabs and the section cards carry their icons', 
     $client = Client::factory()->create(['name' => 'Dokos Home', 'slug' => 'dokos']);
 
     $html = $this->actingAs($user)->get(route('clients.edit', $client))->assertOk()->getContent();
-    foreach (['home', 'calendar-days', 'device-phone-mobile', 'building-storefront', 'photo', 'folder-open', 'identification', 'trash', 'plus', 'microphone', 'sparkles'] as $name) {
+    foreach (['home', 'calendar-days', 'device-phone-mobile', 'building-storefront', 'folder-open', 'identification', 'trash', 'plus', 'microphone', 'sparkles'] as $name) {
         expect($html)->toContain(Icons::PATHS[$name]);
     }
     expect($html)->toContain('bg-brand-50 text-brand-600'); // a section card's icon tile

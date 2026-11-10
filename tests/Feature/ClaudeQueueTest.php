@@ -32,15 +32,15 @@ test('the Plan with Claude box lists the client\'s waiting requests, each with a
     $plain = planJob($client, ['posts' => 4, 'from' => '2026-11-10', 'days' => 7], '2026-11-06 11:30:00');
     planJob($other, ['posts' => 9, 'from' => '2027-01-01', 'days' => 31]);
 
-    $this->actingAs($staff)->get(route('clients.edit', $client))->assertOk()
+    $this->actingAs($staff)->get(route('clients.planner', $client))->assertOk()
         ->assertSeeInOrder(['Waiting for Claude', '12 posts from 01-12-2026 for 30 days', 'About:', 'Christmas opening hours', 'queued 06-11-2026 09:15', '2 hours ago', 'over 2 hours', 'Cancel',
             '4 posts from 10-11-2026 for 7 days', 'queued 06-11-2026 11:30', '30 minutes ago', route('claude.cancel', $plain)])
         ->assertDontSee('9 posts from');
-    $this->actingAs($staff)->get(route('clients.edit', $other))->assertOk()->assertDontSee('12 posts from');
+    $this->actingAs($staff)->get(route('clients.planner', $other))->assertOk()->assertDontSee('12 posts from');
 
-    $this->actingAs($staff)->from(route('clients.edit', $client))->delete(route('claude.cancel', $plain))->assertRedirect(route('clients.edit', $client));
+    $this->actingAs($staff)->from(route('clients.planner', $client))->delete(route('claude.cancel', $plain))->assertRedirect(route('clients.planner', $client));
     expect(Report::find($plain->id))->toBeNull()->and($client->reports()->where('kind', 'claude_job')->count())->toBe(1);
-    $this->actingAs($staff)->get(route('clients.edit', $client))->assertDontSee('4 posts from');
+    $this->actingAs($staff)->get(route('clients.planner', $client))->assertDontSee('4 posts from');
 });
 
 test('only staff cancel, a limited login only its own clients\' requests, and only queue rows', function () {
@@ -62,15 +62,15 @@ test('pressing Queue for Claude again with the same request adds nothing and say
     $staff = User::factory()->create();
     $request = ['posts' => 6, 'from' => '2027-05-01', 'days' => 31, 'instruction' => 'Full moon parties'];
 
-    $this->actingAs($staff)->post(route('clients.queue', $client), $request)->assertRedirect(route('clients.edit', $client))->assertSessionHas('status', 'job-queued');
+    $this->actingAs($staff)->post(route('clients.queue', $client), $request)->assertRedirect(route('clients.planner', $client))->assertSessionHas('status', 'job-queued');
     $this->travel(20)->minutes();
     foreach ([$request, ['instruction' => '  Full moon parties  '] + $request] as $again) {
-        $this->actingAs($staff)->post(route('clients.queue', $client), $again)->assertRedirect(route('clients.edit', $client))->assertSessionHas('status', 'job-already-waiting');
+        $this->actingAs($staff)->post(route('clients.queue', $client), $again)->assertRedirect(route('clients.planner', $client))->assertSessionHas('status', 'job-already-waiting');
     }
     expect($client->reports()->where('kind', 'claude_job')->count())->toBe(1);
 
     $this->actingAs($staff)->post(route('clients.queue', $client), $request)->assertSessionHas('status', 'job-already-waiting');
-    $this->actingAs($staff)->get(route('clients.edit', $client))->assertSee('Already waiting for Claude (queued 06-11-2026 10:00)');
+    $this->actingAs($staff)->get(route('clients.planner', $client))->assertSee('Already waiting for Claude (queued 06-11-2026 10:00)');
 
     // a different request, or the same one for another client, is a new job
     $this->actingAs($staff)->post(route('clients.queue', $client), ['instruction' => 'Weddings'] + $request)->assertSessionHas('status', 'job-queued');
@@ -97,7 +97,7 @@ test('the Jobs page lists every plan and caption request of the login\'s clients
     $this->travelTo('2026-11-06 12:00:00');
 
     $this->actingAs($limited)->get('/jobs')->assertOk()
-        ->assertSeeInOrder(['Waiting for Claude', '12 posts from 01-12-2026 for 30 days', 'Christmas', route('clients.edit', $mine), '06-11-2026 08:00', '4 hours ago', 'over 2 hours', 'Cancel',
+        ->assertSeeInOrder(['Waiting for Claude', '12 posts from 01-12-2026 for 30 days', 'Christmas', route('clients.planner', $mine), '06-11-2026 08:00', '4 hours ago', 'over 2 hours', 'Cancel',
             route('posts.edit', $asked), 'ALMYRA_ASKED', '06-11-2026 11:00', '1 hour ago', route('claude.stop', $asked), 'Stop asking', 'ALMYRA_APPROVED'])
         ->assertDontSee('Kima')->assertDontSee('KIMA_ASKED')->assertDontSee('9 posts from')
         ->assertDontSee('ALMYRA_NOT_ASKED')->assertDontSee('ALMYRA_PUBLISHED')->assertDontSee('ALMYRA_BINNED');
@@ -160,7 +160,7 @@ test('a request left for over 2 hours puts a box on the dashboard and one Slack 
 
     $this->artisan('claude:check-queue')->assertSuccessful();
     Http::assertSentCount(2);
-    Http::assertSent(fn ($r) => str_contains($r['text'], 'Almyra: Claude has not picked up the plan request "Plan 6 posts", queued 06-11-2026 08:00. Check that the scheduled task is on.') && str_contains($r['text'], route('clients.edit', $mine)));
+    Http::assertSent(fn ($r) => str_contains($r['text'], 'Almyra: Claude has not picked up the plan request "Plan 6 posts", queued 06-11-2026 08:00. Check that the scheduled task is on.') && str_contains($r['text'], route('clients.planner', $mine)));
     Http::assertSent(fn ($r) => str_contains($r['text'], 'Kima: Claude has not picked up the captions of KIMA_CAPTIONS, queued 06-11-2026 08:00.') && str_contains($r['text'], route('posts.edit', $post)));
     expect($job->fresh()->meta)->toHaveKey('alerted_at')->and($post->fresh()->updated_at->format('H:i'))->toBe('08:00'); // the post was not "changed"
 

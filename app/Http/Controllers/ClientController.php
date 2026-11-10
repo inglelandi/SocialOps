@@ -43,13 +43,22 @@ class ClientController extends Controller
 
     public function edit(Client $client): View
     {
+        return view('clients.edit', ['client' => $client]);
+    }
+
+    /**
+     * The Plan with Claude tab: the plan request for the scheduled Claude worker (MCP mode) or the server-side Plan and Post from a
+     * prompt boxes (FEATURE_CLAUDE_API), the requests still waiting, and the spreadsheet import; every way posts reach the calendar.
+     */
+    public function planner(Client $client): View
+    {
         $read = $client->documents()->where('chars', '>', 0)->whereIn('kind', ['previous_posts', 'reference']);
 
-        return view('clients.edit', [
+        return view('clients.plan', [
             'client' => $client,
             'accounts' => PlanRequest::accounts($client->toProfileArray()),
             'claudeJobs' => $client->reports()->where('kind', 'claude_job')->orderBy('id')->get(),
-            // the reference folder of the Files tab, for the line under the MCP "Plan with Claude" box; null while none is linked
+            // the reference folder of the Files page, for the line under the MCP "Plan with Claude" box; null while none is linked
             'documents' => $client->accounts()->where('platform', 'drive_docs')->exists() ? [
                 'read' => $read->count(),
                 'previous' => $read->clone()->where('kind', 'previous_posts')->count(),
@@ -89,7 +98,7 @@ class ClientController extends Controller
         ]);
         PlanContentBatch::dispatch($client, $request->user(), $options);
 
-        return redirect()->route('clients.edit', $client)->with('status', 'plan-started');
+        return redirect()->route('clients.planner', $client)->with('status', 'plan-started');
     }
 
     /** "Post from a prompt": one Draft from the team's words, the profile and the trend brief, through the same queued content:plan run. */
@@ -113,7 +122,7 @@ class ClientController extends Controller
             'brief' => $input['brief'] ?? null,
         ]);
 
-        return redirect()->route('clients.edit', $client)->with('status', 'post-started');
+        return redirect()->route('clients.planner', $client)->with('status', 'post-started');
     }
 
     /** A plan request for the scheduled Claude worker (list-claude-jobs); save-plan removes it. The same request twice is queued once. */
@@ -121,11 +130,11 @@ class ClientController extends Controller
     {
         $fields = $request->validateWithBag('job', ['posts' => ['required', 'integer', 'min:1', 'max:'.PlanRequest::MAX_POSTS], 'from' => ['required', 'date_format:Y-m-d'], 'days' => ['required', 'integer', 'min:1', 'max:92'], 'instruction' => ['nullable', 'string', 'max:5000']]);
         if ($waiting = ClaudeQueue::same($client, $fields)->first()) {
-            return redirect()->route('clients.edit', $client)->with('status', 'job-already-waiting')->with('queued_at', $waiting->created_at->format('d-m-Y H:i'));
+            return redirect()->route('clients.planner', $client)->with('status', 'job-already-waiting')->with('queued_at', $waiting->created_at->format('d-m-Y H:i'));
         }
         $client->reports()->create(['kind' => 'claude_job', 'title' => __('Plan :posts posts from :from', $fields, $client->uiLocale()), 'body' => (string) ($fields['instruction'] ?? ''), 'meta' => $fields]);
 
-        return redirect()->route('clients.edit', $client)->with('status', 'job-queued');
+        return redirect()->route('clients.planner', $client)->with('status', 'job-queued');
     }
 
     public function update(ClientRequest $request, Client $client): RedirectResponse

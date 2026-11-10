@@ -83,7 +83,7 @@ class PostController extends Controller
         $request->validate(['csv' => ['required', 'file', 'mimes:csv,txt', 'max:2048']]);
         $result = CsvImport::import($client, $request->file('csv')->get(), $request->user());
         if ($result['errors']) {
-            return redirect()->route('clients.edit', $client)->withErrors(['csv' => $result['errors']]);
+            return redirect()->route('clients.planner', $client)->withErrors(['csv' => $result['errors']]);
         }
 
         return redirect()->route('calendar', ['client' => $client->slug])->with('status', __(':n drafts imported', ['n' => $result['imported']]));

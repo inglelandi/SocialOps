@@ -156,8 +156,8 @@ test('the Files tab links a feed, refuses a private address, reads it, searches 
     readFeed($this->client, SKROUTZ_FEED);
     $html = $this->actingAs($this->user)->get($tab)->assertOk()->getContent();
     expect($html)->toContain('3 products (2 in stock)')->toContain('Σεντόνι Inventor 160x200 λευκό')->toContain('Out of stock')->toContain('Search the products, as Claude does');
-    $this->actingAs($this->user)->get(route('clients.files', [$this->client, 'q' => 'ΣΤΡΩΜΑ']))->assertOk()->assertSee('Στρώμα Acanthus CANDIA')->assertDontSee('Πάπλωμα Winter μονό');
-    $this->actingAs($this->user)->get(route('clients.files', [$this->client, 'q' => 'zzz']))->assertOk()->assertSee('No product matches these words.');
+    $this->actingAs($this->user)->get(route('clients.files', [$this->client, 'product' => 'ΣΤΡΩΜΑ']))->assertOk()->assertSee('Στρώμα Acanthus CANDIA')->assertDontSee('Πάπλωμα Winter μονό');
+    $this->actingAs($this->user)->get(route('clients.files', [$this->client, 'product' => 'zzz']))->assertOk()->assertSee('No product matches these words.');
 
     $this->actingAs($this->user)->post(route('clients.files.feed.sync', $this->client))->assertRedirect($tab)->assertSessionHas('status', 'Reading the product feed now, the list refreshes in a minute or two');
     $this->actingAs($this->user)->get(route('clients.accounts', $this->client))->assertOk()->assertDontSee('shop.example.gr');
@@ -245,5 +245,5 @@ test('products:pull queues a read of every product feed, and the client page cou
 
     $feed->products()->make(['external_id' => '1', 'name' => 'Σεντόνι', 'url' => 'https://shop.example.gr/1', 'search' => 'σεντονι'])->forceFill(['client_id' => $this->client->id])->save();
     config()->set('features.claude_api', false);
-    $this->actingAs($this->user)->get(route('clients.edit', $this->client))->assertOk()->assertSee('And 1 products from the shop.');
+    $this->actingAs($this->user)->get(route('clients.planner', $this->client))->assertOk()->assertSee('And 1 products from the shop.');
 });

@@ -14,7 +14,7 @@ test('every empty page says what would be there and offers the next step', funct
     $this->get(route('calendar', ['view' => 'list', 'client' => $client->slug]))->assertOk()->assertSee('Nothing scheduled here yet')->assertSee(route('posts.create', $client));
     $this->get(route('clients.reviews', $client))->assertOk()->assertSee('No draft posts waiting')->assertSee(route('posts.create', $client));
     $this->get(route('clients.grid', $client))->assertOk()->assertSee('No Instagram feed posts with a date yet')->assertSee(route('posts.create', $client));
-    $this->get(route('clients.assets', $client))->assertOk()->assertSee('Nothing uploaded yet')->assertSee('href="#inbox-url"', false);
+    $this->get(route('clients.assets', $client))->assertOk()->assertSee('Nothing uploaded yet')->assertSee('href="#sources"', false);
     $this->get(route('clients.assets', [$client, 'kind' => 'video']))->assertOk()->assertSee('Nothing matches these filters')->assertSee(route('clients.assets', $client).'"', false);
     $this->get(route('clients.comments', $client))->assertOk()->assertSee('Nothing to answer yet')->assertSee(route('clients.accounts', $client));
     $client->accounts()->create(['platform' => 'instagram', 'external_id' => '1', 'name' => 'almyra', 'access_token' => 't']);

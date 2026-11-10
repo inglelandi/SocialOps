@@ -17,7 +17,7 @@ test('the team queues captions and plans for Claude in the app; the scheduled wo
 
     $this->actingAs($user)->patch(route('posts.update', $post), ['platforms' => ['instagram'], 'format' => 'feed', 'pillar' => $pillar, 'brief' => 'Full moon party', 'settings' => ['ask_claude' => '1']])->assertSessionHasNoErrors();
     expect($post->fresh()->settings['ask_claude'])->toBeTrue();
-    $this->actingAs($user)->post(route('clients.queue', $client), ['posts' => 6, 'from' => '2027-05-01', 'days' => 31, 'instruction' => 'Full moon parties'])->assertSessionHasNoErrors()->assertRedirect(route('clients.edit', $client));
+    $this->actingAs($user)->post(route('clients.queue', $client), ['posts' => 6, 'from' => '2027-05-01', 'days' => 31, 'instruction' => 'Full moon parties'])->assertSessionHasNoErrors()->assertRedirect(route('clients.planner', $client));
     $job = Report::where('kind', 'claude_job')->firstOrFail();
     expect($job->meta)->toMatchArray(['posts' => 6, 'from' => '2027-05-01', 'days' => 31, 'instruction' => 'Full moon parties'])->and($job->title)->toBe('Πλάνο 6 αναρτήσεων από 2027-05-01');
 

@@ -25,10 +25,13 @@ function clip(Client $client, string $name, int $seconds, string $size): Asset
     return Asset::factory()->create(['client_id' => $client->id, 'name' => $name, 'original_name' => $name, 'path' => "clients/almyra/inbox/{$name}", 'mime' => 'video/mp4', 'kind' => 'video']);
 }
 
-test('the assets page offers a Reel once the client has clips, and says so when ffmpeg is missing', function () {
-    $this->actingAs($this->user)->get(route('clients.assets', $this->client))->assertOk()->assertDontSee('Make a Reel');
-    Asset::factory()->create(['client_id' => $this->client->id, 'kind' => 'video', 'mime' => 'video/mp4', 'name' => 'ALMYRA_20261104_ANY_VID_MISC_EL-EN_v1.mp4']);
-    $this->actingAs($this->user)->get(route('clients.assets', $this->client))->assertOk()->assertSee('Make a Reel')->assertSee('In the Reel')->assertSee('Make the Reel');
+test('the Files page offers a Reel once the client has two clips, and says so when ffmpeg is missing', function () {
+    $video = fn () => Asset::factory()->create(['client_id' => $this->client->id, 'kind' => 'video', 'mime' => 'video/mp4', 'name' => 'ALMYRA_20261104_ANY_VID_MISC_EL-EN_v'.Asset::count().'.mp4']);
+    $this->actingAs($this->user)->get(route('clients.assets', $this->client))->assertOk()->assertSee('Make a Reel')->assertSee('Upload at least two videos to make a Reel.')->assertDontSee('In the Reel');
+    $video();
+    $this->actingAs($this->user)->get(route('clients.assets', $this->client))->assertOk()->assertSee('Upload at least two videos to make a Reel.');
+    $video();
+    $this->actingAs($this->user)->get(route('clients.assets', $this->client))->assertOk()->assertSee('Make a Reel')->assertSee('In the Reel')->assertSee('Make the Reel')->assertDontSee('Upload at least two videos');
 
     config(['services.ffmpeg.path' => '/nowhere/ffmpeg']);
     $this->actingAs($this->user)->get(route('clients.assets', $this->client))->assertOk()->assertSee('Install ffmpeg on the server')->assertDontSee('In the Reel');

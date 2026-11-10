@@ -40,7 +40,7 @@ test('a wrong row stops the whole import and names the row', function () {
     $csv = "date,platforms,format\n2027-05-12,instagram,feed\nnot a date,twitter,poster\n";
 
     $this->actingAs($this->staff)->post(route('posts.import', $this->client), ['csv' => UploadedFile::fake()->createWithContent('posts.csv', $csv)])
-        ->assertRedirect(route('clients.edit', $this->client))
+        ->assertRedirect(route('clients.planner', $this->client))
         ->assertSessionHasErrors(['csv' => 'Row 3: platforms must be some of instagram, facebook, tiktok, linkedin.']);
     expect(session('errors')->get('csv'))->toHaveCount(3)->and(Post::count())->toBe(0);
 

@@ -136,7 +136,7 @@ test('the files filter by pillar, kind, use in a post, and a search over the nam
     };
 
     $html = $shows([], ['ALMYRA_SUNSET.jpg', 'ALMYRA_OCTOPUS.jpg', 'ALMYRA_CLIP.mp4', 'ALMYRA_BINNED.jpg']);
-    expect($html)->toContain('Files (4)')->not->toContain('Clear filters');
+    expect($html)->toContain('Photos and videos (4)')->not->toContain('Clear filters');
     $shows(['used' => 'yes'], ['ALMYRA_SUNSET.jpg', 'ALMYRA_BINNED.jpg']);
     $shows(['used' => 'no'], ['ALMYRA_OCTOPUS.jpg', 'ALMYRA_CLIP.mp4']);
     $shows(['kind' => 'video', 'used' => 'no'], ['ALMYRA_CLIP.mp4']);
@@ -146,7 +146,7 @@ test('the files filter by pillar, kind, use in a post, and a search over the nam
     $shows(['q' => 'food drink'], ['ALMYRA_OCTOPUS.jpg']); // the pillar as the page shows it
     $shows(['pillar' => 'place', 'q' => 'clip'], ['ALMYRA_CLIP.mp4']);
     $html = $shows(['q' => 'summer', 'used' => 'yes'], ['ALMYRA_SUNSET.jpg']);
-    expect($html)->toContain('value="summer"')->toContain('<option value="yes" selected')->toContain('Clear filters')->toContain('Files (1)');
+    expect($html)->toContain('value="summer"')->toContain('<option value="yes" selected')->toContain('Clear filters')->toContain('Photos and videos (1)');
 
     $html = $shows(['q' => 'nothing like this'], []);
     expect($html)->toContain('Nothing matches these filters.')->toContain('href="'.route('clients.assets', $this->client).'"');
@@ -179,24 +179,33 @@ test('delete asks first and names the posts that would lose the file, one in the
     expect(Asset::count())->toBe(0)->and($post->assets()->count())->toBe(0);
 });
 
-test('the page puts the team upload first, the other ways and the Reel tool folded, then the files', function () {
+test('the Files page lists its sections in a side list: the photos and videos with the upload first, the other ways in, the Reel maker, then what Claude reads', function () {
     config(['services.ffmpeg.path' => PHP_BINARY]); // any executable shows the Reel form (the page never runs it), so CI without ffmpeg checks it too; ReelTest covers "ffmpeg missing"
     Asset::factory()->create(['client_id' => $this->client->id, 'kind' => 'video', 'mime' => 'video/mp4', 'name' => 'ALMYRA_CLIP.mp4', 'original_name' => 'IMG_0002.mp4']);
     Asset::factory()->create(['client_id' => $this->client->id, 'kind' => 'video', 'mime' => 'video/mp4', 'name' => 'ALMYRA_CLIP2.mp4', 'original_name' => 'IMG_0001.mp4']);
 
     $html = $this->actingAs($this->staff)->get(route('clients.assets', $this->client))->assertOk()
-        ->assertSeeInOrder(['Add files', 'Drop photos and videos here', 'For every file in this upload', 'Other ways to add files', 'Upload link for the client', '/inbox/almyra?expires=', 'Copy', 'Google Drive', 'Dropbox', 'Canva', 'Tools', 'Make a Reel', 'IMG_0001.mp4', 'IMG_0002.mp4', 'Files (2)', 'Search by name or tag'], false)
+        ->assertSeeInOrder(['data-tab="media"', 'Photos and videos', 'data-tab="sources"', 'Other ways to add files', 'data-tab="reel"', 'Make a Reel', 'What Claude reads', 'data-tab="slideshow"', 'data-tab="folder"', 'data-tab="designs"', 'data-tab="feed"',
+            'Add files', 'Drop photos and videos here', 'For every file in this upload', 'Photos and videos (2)', 'Search by name or tag',
+            'Upload link for the client', '/inbox/almyra?expires=', 'Copy', 'Google Drive', 'Dropbox', 'Canva', 'Make a Reel', 'IMG_0001.mp4', 'IMG_0002.mp4',
+            'Posts slideshow', 'Google Drive folder', 'Designs', 'Product feed'], false)
         ->getContent();
     expect($html)->toContain('action="'.route('assets.store', $this->client).'"')->toContain('enctype="multipart/form-data"')->toContain('name="files[]"')
-        ->toMatch('/<details id="other-ways" class="group"\s*>/')->toMatch('/<details id="tools" class="group"\s*>/'); // both folded
+        ->toContain('x-show="tab === \'sources\'"')->toContain('x-show="tab === \'reel\'"');
 
+    // the section the page opens on (filesPage's `open`): /assets the photos, /files the one opened last (null), else what the last action was about
+    $opens = fn ($response) => preg_match('/\\\\u0022open\\\\u0022:(?:\\\\u0022)?(\w+)/', $response->assertOk()->getContent(), $m) ? $m[1] : 'missing';
+    expect($opens($this->get(route('clients.assets', $this->client))))->toBe('media')
+        ->and($opens($this->get(route('clients.files', $this->client))))->toBe('null')
+        ->and($opens($this->get(route('clients.files', [$this->client, 'q' => 'sunset']))))->toBe('media');
     // a Canva search, a Dropbox just connected (its folder still to name) or an error from one of the other ways opens them
-    $opened = '/<details id="other-ways" class="group"\s+open\s*>/';
-    expect($this->get(route('clients.assets', [$this->client, 'canva' => '']))->getContent())->toMatch($opened);
-    expect($this->withSession(['status' => 'dropbox-connected'])->get(route('clients.assets', $this->client))->getContent())->toMatch($opened);
+    expect($opens($this->get(route('clients.assets', [$this->client, 'canva' => '']))))->toBe('sources')
+        ->and($opens($this->withSession(['status' => 'dropbox-connected'])->get(route('clients.assets', $this->client))))->toBe('sources');
     $this->client->accounts()->create(['platform' => 'dropbox', 'external_id' => 'dbid:abc', 'name' => 'Panos', 'access_token' => 'at', 'refresh_token' => 'rt', 'token_expires_at' => now()->addHour()]);
     Http::fake(['api.dropboxapi.com/2/files/get_metadata' => Http::response(['error_summary' => 'path/not_found/..', 'error' => ['.tag' => 'path']], 409)]);
-    $html = $this->followingRedirects()->post(route('dropbox.watch', $this->client), ['folder' => '/Clients/Nope'])->assertOk()
-        ->assertSee('Dropbox: no such folder.')->assertSee('value="/Clients/Nope"', false)->getContent();
-    expect($html)->toMatch($opened);
+    $response = $this->followingRedirects()->post(route('dropbox.watch', $this->client), ['folder' => '/Clients/Nope'])->assertOk()
+        ->assertSee('Dropbox: no such folder.')->assertSee('value="/Clients/Nope"', false);
+    expect($opens($response))->toBe('sources')
+        ->and(substr_count($response->getContent(), 'value="/Clients/Nope"'))->toBe(1); // only in the Dropbox box, not in the reference folder's
+    expect($opens($this->withSession(['tab' => 'feed'])->get(route('clients.assets', $this->client))))->toBe('feed'); // an action's redirect names its section
 });

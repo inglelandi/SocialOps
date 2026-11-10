@@ -8,6 +8,15 @@
 
     <div class="py-6">
         <div class="max-w-md mx-auto px-4">
+            {{-- one of the calendar's views: the same switch, Grid on --}}
+            <p class="mb-4 flex justify-center">
+                <span class="inline-flex rounded-lg bg-gray-100 p-0.5 text-sm">
+                    @foreach (['month' => [__('Month'), 'calendar-days'], 'week' => [__('Week'), 'calendar'], 'list' => [__('List'), 'list-bullet']] as $one => [$label, $icon])
+                        <a class="inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-gray-600 hover:text-gray-900" href="{{ route('calendar', ['client' => $client->slug, 'view' => $one]) }}"><x-icon :name="$icon" class="h-4 w-4" />{{ $label }}</a>
+                    @endforeach
+                    <span class="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1 font-medium text-gray-900 shadow-sm" aria-current="page"><x-icon name="squares-2x2" class="h-4 w-4" />{{ __('Grid') }}</span>
+                </span>
+            </p>
             @if ($posts->isEmpty())
                 <x-empty-state icon="squares-2x2" action-icon="plus" class="mb-4 bg-white" :action="__('New post')" :href="route('posts.create', $client)">{{ __('No Instagram feed posts with a date yet. Feed, carousel and Reel posts show here as the grid will look, newest first.') }}</x-empty-state>
             @endif

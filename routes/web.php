@@ -47,10 +47,12 @@ Route::get('/refresh', fn () => view('refresh'))->middleware(['auth', 'can:admin
 
 Route::middleware(['auth', LimitClients::class])->group(function () {
     Route::resource('clients', ClientController::class)->except('show')->middlewareFor(['create', 'store'], 'can:add-clients');
-    Route::get('/clients/{client}/assets', [AssetController::class, 'index'])->name('clients.assets');
-    Route::get('/clients/{client}/grid', [ClientController::class, 'grid'])->name('clients.grid');
-    // the Files tab: the client's reference folder on Google Drive, read as text for the planner (separate from the photo inbox folder)
+    // the Files page: the photos and videos and the ways in, then what Claude reads (the slideshow, the reference folder, the product feed); /assets opens it on the photos
     Route::get('/clients/{client}/files', [ClientFilesController::class, 'index'])->name('clients.files');
+    Route::get('/clients/{client}/assets', [ClientFilesController::class, 'index'])->name('clients.assets');
+    Route::get('/clients/{client}/grid', [ClientController::class, 'grid'])->name('clients.grid');
+    Route::get('/clients/{client}/plan', [ClientController::class, 'planner'])->name('clients.planner'); // the Plan with Claude tab (its POST is the server-side plan)
+    Route::get('/clients/{client}/plan', [ClientController::class, 'planner'])->name('clients.planner'); // the Plan with Claude tab (its POST is the server-side plan)
     Route::post('/clients/{client}/files/folder', [ClientFilesController::class, 'link'])->name('clients.files.link');
     Route::post('/clients/{client}/files/sync', [ClientFilesController::class, 'sync'])->name('clients.files.sync');
     Route::post('/clients/{client}/files/slideshow', [ClientFilesController::class, 'linkSlideshow'])->name('clients.files.slideshow');
@@ -113,12 +115,15 @@ Route::middleware(['auth', LimitClients::class])->group(function () {
     Route::get('/settings', [SettingsController::class, 'edit'])->middleware('can:admin')->name('settings.edit');
     Route::post('/settings', [SettingsController::class, 'update'])->middleware('can:admin')->name('settings.update');
     Route::post('/settings/test-mail', [SettingsController::class, 'testMail'])->middleware('can:admin')->name('settings.test-mail');
-    Route::get('/staff', [StaffController::class, 'index'])->name('staff.index');
-    Route::post('/staff', [StaffController::class, 'store'])->name('staff.store');
-    Route::delete('/staff/{user}', [StaffController::class, 'destroy'])->name('staff.destroy');
-    Route::patch('/staff/{user}', [StaffController::class, 'update'])->name('staff.update');
-    Route::post('/staff/tokens', [StaffController::class, 'tokenStore'])->name('staff.tokens.store');
-    Route::delete('/staff/tokens/{token}', [StaffController::class, 'tokenDestroy'])->name('staff.tokens.destroy');
+    // the Staff page: logins and API tokens, admins only like Settings and Refresh after update (the Admin group of the side navigation)
+    Route::middleware('can:admin')->group(function () {
+        Route::get('/staff', [StaffController::class, 'index'])->name('staff.index');
+        Route::post('/staff', [StaffController::class, 'store'])->name('staff.store');
+        Route::delete('/staff/{user}', [StaffController::class, 'destroy'])->name('staff.destroy');
+        Route::patch('/staff/{user}', [StaffController::class, 'update'])->name('staff.update');
+        Route::post('/staff/tokens', [StaffController::class, 'tokenStore'])->name('staff.tokens.store');
+        Route::delete('/staff/tokens/{token}', [StaffController::class, 'tokenDestroy'])->name('staff.tokens.destroy');
+    });
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
