@@ -60,7 +60,7 @@ test('the review sheet, the Word file and the calendar give a post the same day,
         ->and($sheet->body)->toContain('## 1. Panagia (17-08-2027 18:00)')->toContain('Σχεδιάστηκε για 15-08-2027')->not->toContain('2027-08-15');
 
     $staff = $this->actingAs(User::factory()->create());
-    expect(scanWordXml($staff->get(route('reports.word', $sheet))->assertOk()))->toContain('17/8 · Panagia')->toContain('17/08 – Panagia');
+    expect(scanWordXml($staff->get(route('reports.word', $sheet))->assertOk()))->toContain('17/8 · Panagia')->not->toContain('17/08 – Panagia'); // the box that repeated the date went in the simpler layout (2026-11-10)
 
     // the team moves it on the calendar later: the Word file follows the calendar
     $post->update(['scheduled_at' => '2027-08-20 12:00']);

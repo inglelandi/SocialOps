@@ -8,13 +8,17 @@ use Illuminate\Support\Str;
 use ZipArchive;
 
 /**
- * The θεματολογία (topic plan) of a content plan as a Word file for the client, in the layout the team writes by hand:
- * the client and the month as a title, one bold line and a short description per post, then a shaded box per post with
- * why now, the assets and the caption brief. Plain WordprocessingML written here, so nothing to install on the server.
+ * The θεματολογία (topic plan) of a content plan as a Word file for the client: the client and the month as a title, then
+ * per post one bold line, a short description and why now, plain, without boxes (Panos, 2026-11-10: "keep the report
+ * simpler"). The titles take the client's brand colour from the profile. Plain WordprocessingML written here, so nothing
+ * to install on the server.
  */
 class TopicsDocx
 {
     public const MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+    /** The titles' colour when the profile names no brand colour: the app's dark grey. */
+    public const DEFAULT_COLOR = '212121';
 
     /** "November posts 2026" in the client's language: the second title line and the file name. */
     public static function title(Report $report): string
@@ -35,7 +39,8 @@ class TopicsDocx
         $client = $report->client;
         $locale = $client->uiLocale();
 
-        $body = self::p(self::run($client->name, bold: true, size: 46, color: '50c496', font: 'Verdana').'<w:br/>'.self::run(self::title($report), bold: true, size: 34, color: '50c496', font: 'Verdana'), '<w:jc w:val="center"/>')
+        $color = self::color($client->toProfileArray()['brand_color'] ?? '');
+        $body = self::p(self::run($client->name, bold: true, size: 46, color: $color, font: 'Verdana').'<w:br/>'.self::run(self::title($report), bold: true, size: 34, color: $color, font: 'Verdana'), '<w:jc w:val="center"/>')
             .self::p('')
             .self::p(self::run(__('Suggested topics of :month for :client', ['month' => self::month($report, $locale), 'client' => $client->name], $locale), bold: true, size: 24), '<w:ind w:left="720"/>')
             .self::p('');
@@ -47,21 +52,11 @@ class TopicsDocx
             $tag = in_array('tiktok', $post['platforms'], true) ? ' #TikTok '.++$tiktok : '';
             $trend = filled($post['trend_signal'] ?? null) ? __('Trend:', [], $locale)." {$post['trend_signal']}. " : '';
 
-            $box = [self::p(self::run($date->format('d/m').' – '.$post['title']." ({$format})", bold: true))];
-            foreach ([
-                __('Why now:', [], $locale) => trim($trend.($post['why_now'] ?? '')),
-                __('Assets:', [], $locale) => $post['asset_brief'] ?? '',
-                __('Caption:', [], $locale) => $post['caption_brief'] ?? '',
-                __('Pillar:', [], $locale) => $post['pillar'] ?? '',
-            ] as $label => $text) {
-                if (filled($text)) {
-                    $box[] = self::p(self::run($label.' ', bold: true).self::run($text));
-                }
-            }
+            $whyNow = trim($trend.($post['why_now'] ?? ''));
 
-            $body .= self::p(self::run($date->format('j/n').' · '.$post['title']." ({$format}){$tag}", bold: true, size: 24))
+            $body .= self::p(self::run($date->format('j/n').' · '.$post['title']." ({$format}){$tag}", bold: true, size: 24, color: $color))
                 .self::p(self::run($post['angle']))
-                .self::box($box)
+                .($whyNow !== '' ? self::p(self::run(__('Why now:', [], $locale).' ', bold: true).self::run($whyNow)) : '')
                 .self::p('');
         }
 
@@ -113,14 +108,10 @@ class TopicsDocx
         return "<w:p><w:pPr>{$props}</w:pPr>{$runs}</w:p>";
     }
 
-    /** One shaded, bordered cell, like the concept boxes in the team's files. */
-    private static function box(array $paragraphs): string
+    /** The profile's brand colour as Word writes it (rrggbb), the dark grey when it names none. */
+    private static function color(string $brand): string
     {
-        $borders = implode('', array_map(fn ($side) => "<w:{$side} w:val=\"single\" w:sz=\"8\" w:color=\"000000\"/>", ['top', 'left', 'bottom', 'right']));
-        $margins = implode('', array_map(fn ($side) => "<w:{$side} w:w=\"100\" w:type=\"dxa\"/>", ['top', 'left', 'bottom', 'right']));
-
-        return '<w:tbl><w:tblPr><w:tblW w:w="9026" w:type="dxa"/><w:tblBorders>'.$borders.'</w:tblBorders><w:tblCellMar>'.$margins.'</w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="9026"/></w:tblGrid>'
-            .'<w:tr><w:tc><w:tcPr><w:tcW w:w="9026" w:type="dxa"/><w:shd w:val="clear" w:fill="d9ead3"/></w:tcPr>'.implode('', $paragraphs).'</w:tc></w:tr></w:tbl>';
+        return preg_match('/^#?([0-9a-fA-F]{6})$/', trim($brand), $m) ? strtolower($m[1]) : self::DEFAULT_COLOR;
     }
 
     /** The .docx package: content types, the relationships, default Arial 11pt, the A4 document. */

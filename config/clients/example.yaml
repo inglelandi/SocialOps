@@ -71,6 +71,7 @@ saved_replies: []       # answers you give often, offered in the comment inbox, 
 signatures: {}          # a line added under every caption of that platform at publish time, e.g. { facebook: "Κρατήσεις / Bookings: +30 28210 00000", linkedin: "almyra.gr" }
 fields: {}              # placeholders for captions, signatures and the first comment, written as {{phone}} and filled at publish time, e.g. { phone: "+30 28210 00000", site: almyra.gr, booking: "https://almyra.gr/book" }
 webhooks: []            # HTTPS URLs that get a signed JSON POST when a post is published, fails or needs a human (docs/api.md), e.g. [{ url: "https://example.com/hook", secret: "shared-secret", events: [post.published] }]
+brand_color: ""         # the client's brand colour (#rrggbb): the titles of the Word topic plan are written in it; empty is dark grey
 utm: false              # true adds utm_source=<platform>&utm_medium=social&utm_campaign=<post name> to every link in captions, first comments and Google buttons at publish time (links that already carry utm_ are left alone)
 
 key_dates:

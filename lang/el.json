@@ -1073,5 +1073,8 @@
     "Linked “:name”, Claude reads it when it plans this client": "Συνδέθηκε η παρουσίαση «:name», το Claude τη διαβάζει όταν σχεδιάζει για αυτόν τον πελάτη",
     "Slideshow read again": "Η παρουσίαση διαβάστηκε ξανά",
     "Slideshow unlinked, its text is forgotten here": "Η παρουσίαση αποσυνδέθηκε, το κείμενό της ξεχάστηκε εδώ",
-    "And the posts slideshow “:name”.": "Και την παρουσίαση αναρτήσεων «:name»."
+    "And the posts slideshow “:name”.": "Και την παρουσίαση αναρτήσεων «:name».",
+    "Brand colour": "Χρώμα brand",
+    "The titles of the Word topic plan are written in it. Empty is dark grey.": "Οι τίτλοι της θεματολογίας στο Word γράφονται με αυτό. Κενό σημαίνει σκούρο γκρι.",
+    "Pick the colour": "Διάλεξε το χρώμα"
 }

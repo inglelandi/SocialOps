@@ -31,6 +31,12 @@
             <x-text-input id="location" name="location" type="text" class="block w-full text-sm" :value="old('location', $client->location)" placeholder="Chania, Crete" required aria-label="{{ __('Location') }}" />
         </div>
     </x-field>
+    <x-field :label="__('Brand colour')" for="p-brand-color" :help="__('The titles of the Word topic plan are written in it. Empty is dark grey.')">
+        <div class="flex items-center gap-3" x-data="{ color: @js($p('brand_color')) }">
+            <input type="color" x-bind:value="/^#[0-9a-f]{6}$/i.test(color) ? color : '#212121'" x-on:input="color = $event.target.value" class="h-10 w-14 flex-none cursor-pointer rounded-md border border-gray-400 bg-white p-1" aria-label="{{ __('Pick the colour') }}">
+            <x-text-input id="p-brand-color" name="p[brand_color]" type="text" class="block w-40 font-mono text-sm" x-model="color" placeholder="#1E6FB8" maxlength="7" />
+        </div>
+    </x-field>
     <x-field :label="__('Name in links and code in file names')" for="slug" :help="__('Made from the name when left empty. Changing the link name later breaks links already sent.')">
         <div class="grid gap-3 sm:grid-cols-2">
             <x-text-input id="slug" name="slug" type="text" class="block w-full font-mono text-sm" :value="old('slug', $client->slug)" placeholder="almyra-beach-lounge" />
