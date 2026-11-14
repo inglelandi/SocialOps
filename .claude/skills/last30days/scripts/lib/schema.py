@@ -355,6 +355,9 @@ class RetrievalBundle:
     # what a healthy-looking run lost without branding the source partial.
     detail_by_source: dict[str, str] = field(default_factory=dict)
     lane_state_by_source: dict[str, RunOutcomeState] = field(default_factory=dict)
+    # The raw rows of the company's job board, kept until ranking is done so
+    # the Jobs Digest can add the roles the run ranked highest. Never rendered.
+    jobs_board_rows: list[dict[str, Any]] = field(default_factory=list)
 
     def mark_attempted(self, source: str) -> None:
         """Register a planned source before its first retrieval starts."""
@@ -815,6 +818,16 @@ _HEADLINE_ENGAGEMENT_FIELDS_BY_SOURCE = {
     "reddit": ("score",),
     "stocktwits": ("likes", "reshares"),
 }
+
+
+def is_summable_engagement_field(source: str, field: str) -> bool:
+    """True when ``field`` may be added up across a source's items.
+
+    Counters are additive; a score or rank says something about one item
+    and is not, except where it is the source's headline counter (Reddit's
+    ``score`` is its upvote count).
+    """
+    return _is_counter_field(field) or field in _HEADLINE_ENGAGEMENT_FIELDS_BY_SOURCE.get(source, ())
 
 
 def _is_counter_field(field: str) -> bool:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 from typing import Any
 from urllib.parse import urlparse
 
@@ -173,6 +174,10 @@ def _remap_comments(
         }
         if raw_c.get("url"):
             entry["url"] = str(raw_c["url"])
+        # Whether the item's own author wrote the comment, where the source
+        # said so. A comment stored without the key is unknown.
+        if isinstance(raw_c.get("is_uploader"), bool):
+            entry["is_uploader"] = raw_c["is_uploader"]
         out.append(entry)
     return out
 
@@ -360,7 +365,9 @@ def _normalize_x(
     from_date: str,
     to_date: str,
 ) -> schema.SourceItem:
-    text = str(item.get("text") or "").strip()
+    # X returns post text HTML-escaped ("Tom &amp; Jerry"). Unescape it here so
+    # the title, the body, quotes copied from it and video titles read as written.
+    text = html.unescape(str(item.get("text") or "")).strip()
     mentioned = item.get("mentioned_handles") or []
     return _source_item(
         item_id=str(item.get("id") or f"X{index + 1}"),
@@ -491,6 +498,9 @@ def _normalize_shortform_video(
         snippet=caption,
         metadata={
             "hashtags": item.get("hashtags") or [],
+            # True only when the snippet is a spoken-word transcript, not the
+            # written description fetch_captions starts from.
+            "spoken_caption": bool(item.get("caption_is_transcript")),
             "top_comments": _remap_comments(
                 item.get("top_comments") or [],
                 # Instagram comments use comment_like_count as the vote field
@@ -647,12 +657,14 @@ def _normalize_digg(
     from_date: str,
     to_date: str,
 ) -> schema.SourceItem:
-    """Normalizer for Digg AI 1000 clusters.
+    """Normalizer for Digg clusters.
 
     Each cluster is one item. The TLDR carries the most useful body for
     rerank and synthesis. Top-ranked X posts attached at search time are
     passed through under metadata['posts'] so render can emit them as
-    inline 'via Digg' quotes.
+    inline 'via Digg' quotes. A story from the all-topic search also
+    carries its UUID, topic and canonical URL in metadata; the UUID is
+    what story-scoped CLI commands take.
     """
     title = str(item.get("title") or "").strip()
     tldr = str(item.get("tldr") or "").strip()
@@ -661,6 +673,19 @@ def _normalize_digg(
     if not isinstance(posts, list):
         posts = []
     cluster_url_id = str(item.get("id") or f"DG{index + 1}")
+    metadata = {
+        "clusterUrlId": cluster_url_id,
+        "tldr": tldr,
+        "rank": (item.get("engagement") or {}).get("rank"),
+        "uniqueAuthors": (item.get("engagement") or {}).get("uniqueAuthors"),
+        "postCount": (item.get("engagement") or {}).get("postCount"),
+        "firstPostAge": item.get("first_post_age"),
+        "posts": posts,
+    }
+    if item.get("cluster_id"):
+        metadata["clusterId"] = item["cluster_id"]
+        metadata["topic"] = item.get("topic") or ""
+        metadata["url"] = item.get("url")
     return _source_item(
         item_id=cluster_url_id,
         source=source,
@@ -675,15 +700,7 @@ def _normalize_digg(
         relevance_hint=item.get("relevance", 0.5),
         why_relevant=str(item.get("why_relevant") or ""),
         snippet=tldr[:400],
-        metadata={
-            "clusterUrlId": cluster_url_id,
-            "tldr": tldr,
-            "rank": (item.get("engagement") or {}).get("rank"),
-            "uniqueAuthors": (item.get("engagement") or {}).get("uniqueAuthors"),
-            "postCount": (item.get("engagement") or {}).get("postCount"),
-            "firstPostAge": item.get("first_post_age"),
-            "posts": posts,
-        },
+        metadata=metadata,
     )
 
 
@@ -959,6 +976,9 @@ def _normalize_amazon(
             # swings with keyword phrasing, so filtering can blank the lane.
             "sponsored": bool(item.get("sponsored")),
             "top_comments": top_comments,
+            # The review lane already fired for this product set (search
+            # time), so finalize must not pull again.
+            "reviews_attempted": bool(item.get("reviews_attempted")),
             "product_rating": item.get("product_rating"),
             "product_rating_count": item.get("product_rating_count") or 0,
             "star_distribution": item.get("star_distribution") or {},
@@ -1007,6 +1027,10 @@ def _normalize_polymarket(
             "end_date": item.get("end_date"),
             "outcome_prices": item.get("outcome_prices") or [],
             "outcomes_remaining": item.get("outcomes_remaining"),
+            # The market and price that stand for the event in the footer.
+            **({"headline": item["headline"]} if item.get("headline") else {}),
+            # What the compact output's one-line odds summary is built from.
+            **({"odds": item["odds"]} if item.get("odds") else {}),
         },
     )
 

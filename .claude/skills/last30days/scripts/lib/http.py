@@ -61,11 +61,18 @@ def retry_delay_from_headers(headers, fallback):
     reported dead when it was merely early. Honouring the reset header turns a
     guaranteed zero into a result at the cost of one wait.
 
-    Returns ``fallback`` when neither header is present or parseable.
+    USPTO Patent Public Search names its wait in
+    ``x-rate-limit-retry-after-seconds`` instead.
+
+    Returns ``fallback`` when none of these headers is present or parseable.
     """
     if not headers:
         return fallback
-    for name in ("Retry-After", "x-ratelimit-reset"):
+    for name in (
+        "Retry-After",
+        "x-rate-limit-retry-after-seconds",
+        "x-ratelimit-reset",
+    ):
         raw = headers.get(name)
         if raw is None:
             continue
@@ -89,7 +96,7 @@ USER_AGENT = "last30days-skill/3.0 (Assistant Skill)"
 
 # urllib copies almost all headers across 3xx; strip credentials when origin changes (#1062).
 _CROSS_ORIGIN_AUTH_HEADERS = frozenset(
-    {"authorization", "x-api-key", "x-csrf-token", "x-subscription-token"}
+    {"authorization", "x-access-token", "x-api-key", "x-csrf-token", "x-subscription-token"}
 )
 
 
@@ -156,6 +163,10 @@ _failure_sink: ContextVar[Optional[list["HTTPError"]]] = ContextVar(
 _expected_miss_statuses: ContextVar[frozenset[int]] = ContextVar(
     "last30days_http_expected_miss_statuses",
     default=frozenset(),
+)
+_expected_no_host: ContextVar[Optional[list["HTTPError"]]] = ContextVar(
+    "last30days_http_expected_no_host",
+    default=None,
 )
 
 _FIXTURE_FORMAT = "last30days-http-fixture/v1"
@@ -456,7 +467,25 @@ def replaying_requests(path: str | Path):
             _fixture_state = None
 
 
-def _fixture_replay(request_data: dict[str, Any]) -> Any:
+class ResponseHeaders(dict):
+    """Response headers keyed by lowercased name; lookups ignore case."""
+
+    def __init__(self, pairs=()):
+        super().__init__(
+            (str(name).lower(), value) for name, value in dict(pairs).items()
+        )
+
+    def __getitem__(self, name):
+        return super().__getitem__(str(name).lower())
+
+    def __contains__(self, name):
+        return super().__contains__(str(name).lower())
+
+    def get(self, name, default=None):
+        return super().get(str(name).lower(), default)
+
+
+def _fixture_replay(request_data: dict[str, Any], *, return_headers: bool = False) -> Any:
     with _fixture_lock:
         state = _fixture_state
         if state is None or state["mode"] != "replay":
@@ -476,7 +505,15 @@ def _fixture_replay(request_data: dict[str, Any]) -> Any:
             body=error.get("body"),
             outcome_state=error.get("outcome_state"),
         )
+        # Callers branch on this (a dead careers host is not asked for its
+        # second page), so a replay without it makes requests the live run
+        # never recorded.
+        recorded_error.no_host = bool(error.get("no_host"))
         _raise(recorded_error)
+    if return_headers:
+        # An exchange recorded by a request that did not ask for headers has
+        # none stored; it replays with an empty set.
+        return response.get("value"), ResponseHeaders(response.get("headers") or {})
     return response.get("value")
 
 
@@ -486,6 +523,7 @@ def _fixture_record(
     value: Any = None,
     error: Optional["HTTPError"] = None,
     redactions: frozenset[str] = frozenset(),
+    headers: Optional["ResponseHeaders"] = None,
 ) -> None:
     if _fixture_module_capture.get():
         return
@@ -502,6 +540,12 @@ def _fixture_record(
         response: dict[str, Any]
         if error is None:
             response = {"value": _scrub_fixture_value(value, redactions=redactions)}
+            if headers is not None:
+                # Scrubbed like any other value: a secret-named header (a
+                # session token, Set-Cookie) is stored as "<redacted>".
+                response["headers"] = _scrub_fixture_value(
+                    dict(headers), redactions=redactions
+                )
         else:
             response = {
                 "error": _scrub_fixture_value(
@@ -514,6 +558,8 @@ def _fixture_record(
                     redactions=redactions,
                 )
             }
+            if error.no_host:
+                response["error"]["no_host"] = True
         state["exchanges"].append({"request": request_data, "response": response})
 
 
@@ -610,6 +656,9 @@ class HTTPError(Exception):
         super().__init__(message)
         self.status_code = status_code
         self.body = body
+        # True when no host answered: the name did not resolve or the
+        # connection was refused. See ``expected_no_host``.
+        self.no_host = False
         self.outcome_state = outcome_state or classify_failure(
             status_code=status_code,
             message=message,
@@ -675,6 +724,30 @@ def expected_misses(*status_codes: int):
         _expected_miss_statuses.reset(token)
 
 
+@contextmanager
+def expected_no_host():
+    """Exclude "there is no such host" failures from captured run failures.
+
+    For a caller that tries a host it only guessed: a name that does not
+    resolve, or a connection the host refuses, means nothing is there, not
+    that a source is down. Yields the failures left out, so the caller can
+    stop asking that host. Timeouts and HTTP errors are still recorded.
+    """
+    dropped: list[HTTPError] = []
+    token = _expected_no_host.set(dropped)
+    try:
+        yield dropped
+    finally:
+        _expected_no_host.reset(token)
+
+
+def _is_no_host(error: BaseException) -> bool:
+    """A name that did not resolve or a refused connection, bare or wrapped
+    in a ``URLError``."""
+    reason = getattr(error, "reason", error)
+    return isinstance(reason, (socket.gaierror, ConnectionRefusedError))
+
+
 def submit_with_context(executor, func, /, *args, **kwargs) -> Future:
     """Submit a worker with the caller's failure-capture context."""
     context = copy_context()
@@ -683,6 +756,10 @@ def submit_with_context(executor, func, /, *args, **kwargs) -> Future:
 
 def _record_failure(error: HTTPError) -> None:
     if error.status_code in _expected_miss_statuses.get():
+        return
+    no_host = _expected_no_host.get()
+    if no_host is not None and error.no_host:
+        no_host.append(error)
         return
     sink = _failure_sink.get()
     if sink is not None:
@@ -783,7 +860,9 @@ def request(
     owned_get: bool = False,
     on_retry: Callable[[], None] | None = None,
     bypass_proxy: bool = False,
-) -> Union[Dict[str, Any], str]:
+    retry_dns: bool = True,
+    return_headers: bool = False,
+) -> Union[Dict[str, Any], str, tuple[Union[Dict[str, Any], str], ResponseHeaders]]:
     """Make an HTTP request and return JSON response.
 
     Args:
@@ -803,9 +882,16 @@ def request(
             its deadline. Requires deadline_monotonic; other methods are refused.
         on_retry: Called before each transport attempt after the first.
         bypass_proxy: Use a direct connection for this request and its redirects.
+        retry_dns: Widen the retry budget to MIN_DNS_RETRIES when the name does
+            not resolve. Off for a host the caller only guessed, where a name
+            that does not resolve is the answer.
+        return_headers: Also return the response headers, for a host that
+            answers in a header (a session token) rather than the body. Not
+            available with owned_get, whose child process reports no headers.
 
     Returns:
-        Parsed JSON response as dict, or raw text string if raw=True.
+        Parsed JSON response as dict, or raw text string if raw=True. With
+        return_headers=True, a ``(body, ResponseHeaders)`` tuple instead.
 
     Raises:
         HTTPError: On request failure
@@ -816,6 +902,8 @@ def request(
         raise ValueError("owned GET requires an operation deadline")
     if owned_get and bypass_proxy:
         raise ValueError("owned GET does not support proxy bypass")
+    if owned_get and return_headers:
+        raise ValueError("owned GET does not report response headers")
     headers = headers or {}
     headers.setdefault("User-Agent", USER_AGENT)
 
@@ -840,7 +928,7 @@ def request(
 
     fixture_request = _fixture_request(method, url, json_data, raw)
     fixture_redactions = _fixture_redactions(url, headers, json_data)
-    replayed = _fixture_replay(fixture_request)
+    replayed = _fixture_replay(fixture_request, return_headers=return_headers)
     if replayed is not _NO_FIXTURE:
         return replayed
 
@@ -865,6 +953,7 @@ def request(
     effective_retries = retries
     dns_attempts = 0
     attempt = 0
+    response_headers: Optional[ResponseHeaders] = None
 
     def raise_recorded(error: HTTPError) -> None:
         _fixture_record(fixture_request, error=error, redactions=fixture_redactions)
@@ -892,12 +981,15 @@ def request(
     def open_and_read(
         request_timeout: float,
     ) -> tuple[int, str | None, urllib.error.HTTPError | None]:
+        nonlocal response_headers
         try:
             transport = (
                 _open_request(req, request_timeout, bypass_proxy=True)
                 if bypass_proxy else _open_request(req, request_timeout)
             )
             with transport as response:
+                if return_headers:
+                    response_headers = ResponseHeaders(response.headers.items())
                 return response.status, response.read().decode('utf-8'), None
         except urllib.error.HTTPError as error:
             # Error bodies can stall just like successful bodies. Read both
@@ -1000,12 +1092,16 @@ def request(
                 raise response_error
             body = body or ""
             log_request(f"Response: {response_status} ({len(body)} bytes)")
-            if raw:
-                _fixture_record(fixture_request, value=body, redactions=fixture_redactions)
-                return body
-            parsed = json.loads(body) if body else {}
-            _fixture_record(fixture_request, value=parsed, redactions=fixture_redactions)
-            return parsed
+            value = body if raw else (json.loads(body) if body else {})
+            _fixture_record(
+                fixture_request,
+                value=value,
+                redactions=fixture_redactions,
+                headers=response_headers,
+            )
+            if return_headers:
+                return value, response_headers
+            return value
         except DeadlineExceeded as exc:
             raise_recorded(exc)
         except urllib.error.HTTPError as e:
@@ -1056,6 +1152,7 @@ def request(
                 f"URL Error: {e.reason}",
                 outcome_state=health.TIMEOUT if wrapped_timeout else health.UNREACHABLE,
             )
+            last_error.no_host = _is_no_host(e)
             if _is_dns_failure(e):
                 # DNS resolution failures are transient; expand the retry budget
                 # to MIN_DNS_RETRIES if the caller passed fewer, and use
@@ -1063,7 +1160,7 @@ def request(
                 # default. Counts DNS attempts separately so other URLError
                 # causes don't bypass the regular retry budget.
                 dns_attempts += 1
-                if effective_retries < MIN_DNS_RETRIES:
+                if retry_dns and effective_retries < MIN_DNS_RETRIES:
                     log_request(
                         f"DNS resolution failed; expanding retry budget from "
                         f"{effective_retries} to {MIN_DNS_RETRIES}"
@@ -1102,6 +1199,7 @@ def request(
                 f"Connection error: {type(e).__name__}: {e}",
                 outcome_state=state,
             )
+            last_error.no_host = _is_no_host(e)
             if attempt < retries - 1:
                 # Socket errors respect the caller's original retry budget.
                 if not sleep_before_retry(RETRY_DELAY * (attempt + 1)):
@@ -1146,6 +1244,8 @@ def get_text(
     retries: int = 2,
     accept: str = "*/*",
     headers: Optional[Dict[str, str]] = None,
+    deadline_monotonic: float | None = None,
+    retry_dns: bool = True,
 ) -> Optional[str]:
     """Fetch a URL and return decoded text, or None on any failure.
 
@@ -1160,6 +1260,8 @@ def get_text(
         retries: Number of retries on failure (kept low — these tiers fail fast)
         accept: Accept header value (e.g. "text/html")
         headers: Optional extra headers merged over the defaults
+        deadline_monotonic: Optional absolute monotonic deadline for the call
+        retry_dns: See ``request``
 
     Returns:
         Decoded response body as text, or None on failure.
@@ -1171,9 +1273,16 @@ def get_text(
     }
     if headers:
         merged.update(headers)
+    # Passed only when set, so the plain call stays what it always was.
+    bounds: Dict[str, Any] = {}
+    if deadline_monotonic is not None:
+        bounds["deadline_monotonic"] = deadline_monotonic
+    if not retry_dns:
+        bounds["retry_dns"] = False
     try:
         return request(
-            "GET", url, headers=merged, timeout=timeout, retries=retries, raw=True
+            "GET", url, headers=merged, timeout=timeout, retries=retries, raw=True,
+            **bounds,
         )
     except HTTPError as e:
         log(f"get_text failed ({e}): {url}")

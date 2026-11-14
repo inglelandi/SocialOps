@@ -50,7 +50,7 @@ if os.name == "nt":
 SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from lib import competitors as competitors_mod, corpus, dates, discovery_handoff, env, fetch_memo, freshness, html_render, http, permission_preflight, pipeline, reddit, registers, render, schema, subproc, ui, x_envelope
+from lib import company_resolve, competitors as competitors_mod, corpus, dates, discovery_handoff, env, fetch_memo, freshness, html_render, http, patents, permission_preflight, pipeline, reddit, reddit_arctic, reddit_search, registers, render, report_checklist, schema, subproc, ui, x_envelope, yahoo_finance
 from lib.private_files import write_private_text
 
 atexit.register(subproc.cleanup_children)
@@ -804,6 +804,40 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--x-handle", help="X handle for targeted supplemental search")
     parser.add_argument("--x-related", help="Comma-separated related X handles (searched with lower weight)")
     parser.add_argument(
+        "--ticker",
+        metavar="SYMBOL:COMPANY[,SYMBOL:COMPANY]",
+        help=(
+            "Stock ticker of the listed company behind the topic, with that company's "
+            "name, as the hosting model found it by web search (e.g., \"NVDA:Nvidia\", "
+            "or \"TSLA:Tesla,SPCX:SpaceX\" for a person who leads two). At most two "
+            "pairs. Each is checked against Yahoo Finance before a share-price line is "
+            "shown; when it is passed, no other ticker lookup is used."
+        ),
+    )
+    parser.add_argument(
+        "--company",
+        metavar="NAME[:SITE][,NAME[:SITE]]",
+        help=(
+            "The company behind the topic, listed or not, with its own website, as "
+            "the hosting model found them by web search: the company a person leads "
+            "or founded (Palmer Luckey: \"Anduril:anduril.com\"), or the maker of a "
+            "product. At most two; the jobs lane reads the board of the first that "
+            "has one. The site may be left out (\"Anduril\")."
+        ),
+    )
+    parser.add_argument(
+        "--jobs-board",
+        dest="jobs_board",
+        metavar="URL",
+        help=(
+            "The company's job-board URL as the hosting model found it by web search "
+            "(e.g., https://job-boards.greenhouse.io/andurilindustries; Greenhouse, "
+            "Ashby, Lever, Workable, SmartRecruiters or Workday). The engine reads "
+            "that board and gives a digest only when the board names the company or "
+            "the official site links to it."
+        ),
+    )
+    parser.add_argument(
         "--official-site",
         metavar="DOMAIN",
         help=(
@@ -1087,6 +1121,251 @@ def subrun_kwargs_for(
 COMPETITORS_MIN = competitors_mod.COMPETITORS_MIN
 COMPETITORS_MAX = competitors_mod.COMPETITORS_MAX
 COMPETITORS_DEFAULT = competitors_mod.COMPETITORS_DEFAULT
+
+
+# The lanes that use the resolved company. With every one of them in
+# EXCLUDE_SOURCES nothing reads the answer, so the topic is not sent.
+_COMPANY_LANES = frozenset({yahoo_finance.SOURCE, "jobs", patents.SOURCE})
+
+
+def _resolved_company(
+    entity: str, *, mock: bool, config: dict, host_ticker: bool = False,
+    patent_lane: bool = False,
+) -> dict:
+    """Company fields for one entity's ``resolved`` artifact. Mock runs, and
+    runs that exclude every lane the company feeds, make no request.
+
+    ``patent_lane`` says this run would search the entity's patent filings.
+    Only the main topic of some runs is (see ``_patent_lane_wanted``); for
+    every other entity the patent lane reads nothing, so it does not count
+    among the lanes that must be excluded, and the company's other names,
+    which only that lane reads, are not asked for.
+
+    When the Wikidata lookup failed (not when it answered with nothing),
+    Yahoo's symbol search is asked for the topic instead, and
+    ``company_lookup`` says how that went.
+
+    With ``host_ticker`` the host passed ``--ticker``, which is then the only
+    ticker source: Wikidata is asked for the company and its site but not for
+    a listing, and a failed lookup is not followed by Yahoo's symbol search."""
+    lanes = _COMPANY_LANES if patent_lane else _COMPANY_LANES - {patents.SOURCE}
+    if mock or lanes <= env.exclude_sources(config):
+        return {}
+    if host_ticker:
+        return dict(
+            company_resolve.resolve_company(entity, listing=False, names=patent_lane)
+        )
+    company = company_resolve.resolve_company(entity, names=patent_lane)
+    if isinstance(company, company_resolve.FailedLookup):
+        backup = yahoo_finance.backup_company(entity, config)
+        if backup is None:
+            outcome = "backup not run"
+        else:
+            outcome = "yahoo backup used" if backup else "no backup match"
+        company = {**(backup or {}), "company_lookup": f"wikidata failed; {outcome}"}
+    if company.get("company"):
+        ticker = f", ticker {company['ticker']}" if company.get("ticker") else ""
+        if company.get("company_source") == yahoo_finance.BACKUP_SOURCE:
+            ticker += " (Yahoo match)"
+        sys.stderr.write(f"[Resolve] {entity}: company {company['company']}{ticker}\n")
+    if company.get("ticker") or company.get("ticker_candidates"):
+        company["ticker_source"] = company.get("company_source") or "wikidata"
+    return company
+
+
+def _patent_lane_wanted(
+    *, comparison: bool, mock: bool, hiring_signals: bool, depth: str, config: dict,
+) -> bool:
+    """Whether this run searches the main topic's patent filings, given a
+    company. Never for a comparison (no entity of one gets a digest), a mock
+    run, a ``--hiring-signals`` run, quick depth, or with the lane excluded
+    (``EXCLUDE_SOURCES`` or ``LAST30DAYS_NO_PATENT_DIGEST``)."""
+    if comparison or mock or hiring_signals or depth == "quick":
+        return False
+    return not patents.is_excluded(config)
+
+
+def _company_for_patents(company: dict, host_names: list[str]) -> dict:
+    """The company whose patent filings the run searches, or {} for none.
+
+    The company the resolver named, with the other names it knows. When it
+    named none, the first company the host passed with ``--company``, under
+    that name alone. A ``--ticker`` name and ``--official-site`` are not
+    used: neither says the topic is that company."""
+    if company.get("company"):
+        return dict(company)
+    return {"company": host_names[0]} if host_names else {}
+
+
+# ``--company`` takes as many names as ``--ticker`` takes pairs.
+MAX_HOST_COMPANIES = yahoo_finance.MAX_HOST_TICKERS
+
+
+def _host_companies(raw: str | None) -> list[dict[str, str]]:
+    """The entries of a ``--company`` value, separated by commas, in the order
+    given: ``Name`` or ``Name:site``, the shape of ``--ticker``'s pairs.
+
+    The name is everything before the first colon, so it cannot hold one;
+    the site is a bare domain or a URL, normalized to its homepage the way
+    ``--official-site`` is. Each entry is ``name`` and ``site`` ('' when none
+    was passed). An entry with no name is ignored, and a site that is not a
+    domain is dropped while its name stands; each says so on stderr. Only
+    the first ``MAX_HOST_COMPANIES`` companies are read.
+    """
+    from lib import resolve as resolve_lib
+
+    companies: list[dict[str, str]] = []
+    for entry in (raw or "").split(","):
+        if not entry.strip():
+            continue
+        name, colon, site = entry.partition(":")
+        name = " ".join(name.split())[:80]
+        shown = " ".join(entry.split())[:120]
+        if not name:
+            sys.stderr.write(
+                f"[Resolve] --company ignoring {shown!r}: no company name before the colon\n"
+            )
+            continue
+        url = resolve_lib._official_site_url(site) if colon else ""
+        if site.strip() and not url:
+            sys.stderr.write(
+                f"[Resolve] --company {name}: {' '.join(site.split())[:80]!r} is not a "
+                "domain or URL; using the name without a site\n"
+            )
+        earlier = next((c for c in companies if c["name"] == name), None)
+        if earlier is not None:
+            earlier["site"] = earlier["site"] or url
+            continue
+        companies.append({"name": name, "site": url})
+    if len(companies) > MAX_HOST_COMPANIES:
+        sys.stderr.write(
+            f"[Resolve] --company takes {MAX_HOST_COMPANIES} names; ignoring "
+            f"{', '.join(c['name'] for c in companies[MAX_HOST_COMPANIES:])}\n"
+        )
+    return companies[:MAX_HOST_COMPANIES]
+
+
+def _host_company_names(raw: str | None) -> list[str]:
+    """The company names of a ``--company`` value, in the order given."""
+    return [company["name"] for company in _host_companies(raw)]
+
+
+def _company_signal(
+    company: dict,
+    host_tickers: list[dict] | None,
+    official_site: str,
+    host_names: list[str],
+    jobs_board: str = "",
+) -> str:
+    """What makes this run about a company, or '' when nothing does.
+
+    Any one is enough for the engine to add the jobs lane to a host plan that
+    does not name it: the topic's official site, a company the host named
+    with ``--company``, a usable ``--ticker`` pair, a ``--jobs-board`` URL
+    (the host found a board, so the lane must read it), or the company the
+    topic (or the person it names) resolved to.
+    """
+    if (official_site or "").strip():
+        return "--official-site"
+    if host_names:
+        return "--company"
+    if any(not pair.get("reason") and pair.get("company") for pair in host_tickers or []):
+        return "--ticker"
+    if (jobs_board or "").strip():
+        return "--jobs-board"
+    if company.get("company"):
+        return f"the company {company['company']}"
+    return ""
+
+
+def _host_company_sites(
+    companies: list[dict[str, str]] | list[str], *, mock: bool, config: dict,
+) -> dict[str, str]:
+    """The confirmed official site of each ``--company`` company, by name.
+
+    The site the host passed with the name (``Name:site``) is used as it is:
+    the host's web search found it, as it finds ``--official-site``. A name
+    passed alone is asked of the company resolver (Wikidata, no key), which
+    answers only for the names it is certain about.
+
+    The jobs lane reads that site's careers page instead of guessing a
+    domain from the name, and only such a confirmed site can tie a board to
+    the company (it links the board, or the board states the name the site
+    states). A mock run and a run with the jobs lane excluded ask the
+    resolver nothing.
+    """
+    sites: dict[str, str] = {}
+    lookups = not (mock or "jobs" in env.exclude_sources(config))
+    for company in companies:
+        if isinstance(company, str):
+            company = {"name": company, "site": ""}
+        name, site = company["name"], company.get("site") or ""
+        if not site and lookups:
+            site = str(
+                company_resolve.resolve_company(name, listing=False).get("company_site") or ""
+            )
+            if site:
+                sys.stderr.write(f"[Resolve] --company {name}: official site {site}\n")
+        if site:
+            sites[name] = site
+    return sites
+
+
+def _company_for_jobs(
+    company: dict,
+    host_tickers: list[dict] | None,
+    topic: str,
+    official_site: str = "",
+    host_names: list[str] | None = None,
+    host_sites: dict[str, str] | None = None,
+) -> dict:
+    """The company the jobs lane searches for the main topic.
+
+    The company Wikidata resolved, as it is. When Wikidata named none (it
+    failed, or the topic is a person it is not certain about):
+
+    - the topic's own official site, when the run knows one, is added as
+      ``topic_site``, so the lane reads that site's careers page instead of
+      guessing a domain from the topic's name;
+    - with no official site, the site the host passed for a ``--company``
+      entry that is the topic itself is the ``topic_site``;
+    - the companies the host named that are not the topic itself are added
+      as ``host_companies``: those of ``--company`` (``host_names``), then
+      those of its usable ``--ticker`` pairs, each in the order given and a
+      company named both ways once. The jobs lane tries each after the
+      topic's own name finds no board, and uses the first one that has a
+      board.
+    """
+    if company.get("company"):
+        return company
+    found = dict(company)
+    if official_site.strip():
+        found["topic_site"] = official_site.strip()
+    else:
+        own = next(
+            (site for name, site in (host_sites or {}).items()
+             if site and yahoo_finance._same_company_name(topic, name)),
+            "",
+        )
+        if own:
+            found["topic_site"] = own
+    names: list[str] = []
+    named = list(host_names or []) + [
+        pair.get("company") or "" for pair in host_tickers or [] if not pair.get("reason")
+    ]
+    for name in named:
+        if not name or yahoo_finance._same_company_name(topic, name):
+            continue
+        if any(yahoo_finance._same_company_name(earlier, name) for earlier in names):
+            continue
+        names.append(name)
+    if names:
+        found["host_companies"] = names
+        sites = {name: site for name, site in (host_sites or {}).items() if name in names}
+        if sites:
+            # The confirmed official site of a company the host named.
+            found["host_company_sites"] = sites
+    return found if found != dict(company) else company
 
 
 def truncate_comparison_entities(entities: list[str], *, warn: bool = True) -> list[str]:
@@ -1468,7 +1747,8 @@ def _cache_research_options(
         "hiring_signals", "x_handle", "x_related", "official_site", "no_x_handle",
         "subreddits", "dedicated_subreddits", "devto_tags", "tiktok_hashtags",
         "tiktok_creators", "ig_creators", "max_results", "max_per_source",
-        "max_source_fetches", "auto_resolve", "github_user", "github_repo",
+        "max_source_fetches", "auto_resolve", "github_user", "github_repo", "ticker",
+        "company", "jobs_board",
         "trustpilot_domain", "amazon_query", "meta_ads_page", "telegram_sources",
         "competitors", "competitors_list", "polymarket_keywords", "corpus_all_time", "drill",
     )
@@ -2724,8 +3004,35 @@ def _render_save_and_print(
         except Exception as exc:
             sys.stderr.write(f"[last30days] HTML publish failed: {exc}\n")
             sys.stderr.flush()
-    print(rendered)
+    checklist = _report_checklist_for_stdout(args, rendered, report, entity_reports, audience.name)
+    if checklist:
+        print(rendered + checklist, end="")
+    else:
+        print(rendered)
     return _strict_exit_code(report, entity_reports, config)
+
+
+def _report_checklist_for_stdout(
+    args: argparse.Namespace,
+    rendered: str,
+    report: schema.Report,
+    entity_reports: list[tuple[str, schema.Report]] | None,
+    register: str,
+) -> str:
+    """The format checklist that follows compact stdout, or "" for any other
+    output. It is added here, at the print, so no saved or ``--output`` file,
+    no other emit mode and no renderer ever carries it. A hiring-signals run
+    writes its own scoped report, which the checklist does not describe."""
+    if args.emit != "compact" or getattr(args, "hiring_signals", False):
+        return ""
+    return report_checklist.build(
+        rendered,
+        comparison=bool(entity_reports),
+        recommendation=report_checklist.is_recommendation_run(
+            report.query_plan.intent, report.topic, report.query_plan.raw_topic,
+        ),
+        register=register,
+    )
 
 
 def _propagate_config_to_environ(config: dict[str, object]) -> None:
@@ -3372,6 +3679,9 @@ def main() -> int:
     # Use parse_known_args so setup sub-flags (--device-auth, --github,
     # --openclaw) pass through without argparse hard-exiting.
     args, extra_argv = parser.parse_known_args()
+    if args.as_of_date and dates.is_today(args.as_of_date):
+        # Naming today is a live run: every lane takes its live path.
+        args.as_of_date = None
     option_argv = sys.argv[1:sys.argv.index("--")] if "--" in sys.argv else sys.argv[1:]
     option_tokens = {token.split("=", 1)[0] for token in option_argv}
     args._explicit_options = {
@@ -3476,6 +3786,8 @@ def _main(
     # parallel, so the reset must not live inside the pipeline.
     http.reset_reddit_keyless_memo()
     reddit.reset_scrapecreators_memo()
+    reddit_arctic.reset_memo()
+    reddit_search.reset_run_state()
     fetch_memo.reset()
     resolved_corpus_dirs = corpus.resolve_directories(
         args.corpus, config.get("LAST30DAYS_CORPUS_DIRS")
@@ -4313,6 +4625,55 @@ def _main(
             comp_explicit=comp_explicit,
             comp_plan=comp_plan,
         )
+        # Which company the topic names, from Wikidata. Like the homepage
+        # lookup above it needs no key and does not depend on who planned the
+        # run, so it happens with or without a host plan. Each entity of a
+        # comparison is resolved on its own, after the split.
+        # ``--ticker`` is the host's own answer for the main topic. Passed, it
+        # is the only ticker source, checked against Yahoo after the run.
+        host_tickers = (
+            yahoo_finance.parse_host_tickers(args.ticker)
+            if (args.ticker or "").strip() and not args.mock else None
+        )
+        patent_lane_wanted = _patent_lane_wanted(
+            comparison=comp_enabled, mock=args.mock, hiring_signals=args.hiring_signals,
+            depth=depth, config=config,
+        )
+        main_company = _resolved_company(
+            topic, mock=args.mock, config=config, host_ticker=host_tickers is not None,
+            patent_lane=patent_lane_wanted,
+        )
+        # The jobs lane reads the company from here; each comparison peer
+        # replaces it with its own.
+        host_companies = _host_companies(args.company)
+        host_names = [company["name"] for company in host_companies]
+        # The company's patent filings over the run's own window, fetched
+        # beside the pipeline and collected when it returns.
+        patent_lane = None
+        if patent_lane_wanted:
+            patent_lane = patents.start(
+                _company_for_patents(main_company, host_names),
+                *dates.get_date_range(args.lookback_days, as_of_date=args.as_of_date),
+                config,
+            )
+        config["_company"] = _company_for_jobs(
+            main_company, host_tickers, topic,
+            official_site=official_site, host_names=host_names,
+            host_sites=(
+                {} if main_company.get("company")
+                else _host_company_sites(host_companies, mock=args.mock, config=config)
+            ),
+        )
+        # What makes the run about a company: with any of it, a host plan
+        # that does not name the jobs lane gets it on its primary subquery.
+        config["_company_signal"] = _company_signal(
+            main_company, host_tickers, official_site, host_names,
+            jobs_board=args.jobs_board or "",
+        )
+        if (args.jobs_board or "").strip():
+            # The board URL the host found by web search; the jobs lane reads
+            # it first and checks whose board it is.
+            config["_jobs_board"] = args.jobs_board.strip()
         if comp_enabled:
             config["_perplexity_paid_budget"] = pipeline.PaidSourceBudget(
                 owner=topic,
@@ -4370,6 +4731,7 @@ def _main(
                     if comp_enabled else x_posts_envelope
                 ),
             )
+            patents.collect(patent_lane, r)
             r.artifacts["resolved"] = {
                 "entity": topic,
                 "x_handle": (args.x_handle or "").lstrip("@"),
@@ -4378,7 +4740,24 @@ def _main(
                 "github_repos": list(github_repos or []),
                 "trustpilot_domain": (trustpilot_domain or ""),
                 "context": config.get("_auto_resolve_context", "") or "",
+                **main_company,
             }
+            # The share-price window of a listed company. A mock run resolved
+            # no company, so it never reaches the price CLI, and neither does
+            # a run with EXCLUDE_SOURCES=yahoo_finance.
+            if host_tickers is None:
+                yahoo_finance.attach_market_data(r, main_company, config)
+                return r
+            checked = yahoo_finance.attach_host_tickers(r, host_tickers, config)
+            # The company Wikidata named stays; the host's fills an empty one.
+            host_company = checked.pop("company", "")
+            r.artifacts["resolved"].update(checked)
+            if host_company:
+                r.artifacts["resolved"].setdefault("company", host_company)
+            if checked.get("tickers"):
+                sys.stderr.write(
+                    f"[Resolve] {topic}: ticker {', '.join(checked['tickers'])} (host search)\n"
+                )
             return r
 
         if comp_enabled:
@@ -4458,6 +4837,9 @@ def _main(
                 # Resolution belongs to each entity, not the shared command.
                 entity_config = dict(config)
                 entity_config.pop("_auto_resolve_context", None)
+                # The main topic's company flags are not a peer's.
+                entity_config.pop("_company_signal", None)
+                entity_config.pop("_jobs_board", None)
                 # The Amazon keyword is entity-SPECIFIC, unlike the depth caps
                 # this shallow copy exists to inherit. Leaving the main topic's
                 # keyword in place would search Weber SKUs for a Traeger peer,
@@ -4519,7 +4901,9 @@ def _main(
                     "github_repos": kwargs["github_repos"] or [],
                     "trustpilot_domain": kwargs["trustpilot_domain"] or "",
                     "context": kwargs["_context"],
+                    **_resolved_company(entity, mock=args.mock, config=entity_config),
                 }
+                entity_config["_company"] = resolved_effective
                 if kwargs["_context"]:
                     entity_config["_auto_resolve_context"] = kwargs["_context"]
                 sys.stderr.write(
@@ -4553,6 +4937,7 @@ def _main(
                     x_posts=plan_entry.get("_x_envelope"),
                 )
                 report.artifacts["resolved"] = resolved_effective
+                yahoo_finance.attach_market_data(report, resolved_effective, entity_config)
                 return report
 
             entity_reports = fanout.run_competitor_fanout(
