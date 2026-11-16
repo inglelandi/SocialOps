@@ -127,6 +127,15 @@
                                 @endif
                             </a>
                         </p>
+                        {{-- the client's folder on the office NAS: Claude opens it itself through the Inglelandi NAS connector (D29) --}}
+                        <p class="mt-2 flex items-start gap-1.5 text-sm text-gray-600">
+                            <x-icon name="server-stack" class="mt-0.5 h-4 w-4 flex-none" />
+                            @if ($nasFolder = \App\Planning\NasFolder::path($client))
+                                <span>{{ __('Claude also opens the client\'s folder “:folder” on the office NAS, through the Inglelandi NAS connector.', ['folder' => $nasFolder]) }}</span>
+                            @else
+                                <a href="{{ route('clients.edit', $client) }}" class="font-medium text-gray-900 hover:text-brand-600">{{ __('Name the client\'s folder on the office NAS in the profile (Research), so Claude opens it too.') }}</a>
+                            @endif
+                        </p>
                         @if ($claudeJobs->isNotEmpty())
                             <h4 class="mt-6 text-sm font-semibold text-gray-900">{{ __('Waiting for Claude') }}</h4>
                             <ul class="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-300 text-sm">

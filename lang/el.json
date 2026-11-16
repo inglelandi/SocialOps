@@ -1101,5 +1101,15 @@
     "Link the client's Drive folder on the Files page, so Claude reads the previous posts and the reference files.": "Σύνδεσε τον φάκελο Drive του πελάτη στη σελίδα Αρχεία, για να διαβάζει το Claude τις προηγούμενες αναρτήσεις και τα αρχεία αναφοράς.",
     "Admin": "Διαχείριση",
     "Admin: sees Staff, Settings and Refresh after update": "Διαχειριστής: βλέπει Προσωπικό, Ρυθμίσεις και Ανανέωση μετά την ενημέρωση",
-    "Products:": "Προϊόντα:"
+    "Products:": "Προϊόντα:",
+    "The NAS folder is a folder inside Clients, such as Dokos Home or Dokos Home/Instagram Posts.": "Ο φάκελος στο NAS είναι ένας φάκελος μέσα στο Clients, π.χ. Dokos Home ή Dokos Home/Instagram Posts.",
+    "Folder on the office NAS": "Φάκελος στο NAS του γραφείου",
+    "The client's folder inside Clients on the NAS. Claude opens it through the Inglelandi NAS connector when it plans or writes posts for this client. A path copied from Explorer works too.": "Ο φάκελος του πελάτη μέσα στο Clients του NAS. Το Claude τον ανοίγει μέσω του connector Inglelandi NAS όταν σχεδιάζει ή γράφει αναρτήσεις για αυτόν τον πελάτη. Δέχεται και διαδρομή αντιγραμμένη από την Εξερεύνηση των Windows.",
+    "Claude also opens the client's folder “:folder” on the office NAS, through the Inglelandi NAS connector.": "Το Claude ανοίγει επίσης τον φάκελο «:folder» του πελάτη στο NAS του γραφείου, μέσω του connector Inglelandi NAS.",
+    "Name the client's folder on the office NAS in the profile (Research), so Claude opens it too.": "Γράψτε τον φάκελο του πελάτη στο NAS του γραφείου στο προφίλ (Έρευνα), για να τον ανοίγει και το Claude.",
+    "Office NAS folder": "Φάκελος στο NAS",
+    "The client's folder on the office NAS. Claude opens it through the Inglelandi NAS connector when it plans or writes posts for this client: past posts, designs and documents. Nothing is copied here.": "Ο φάκελος του πελάτη στο NAS του γραφείου. Το Claude τον ανοίγει μέσω του connector Inglelandi NAS όταν σχεδιάζει ή γράφει αναρτήσεις για αυτόν τον πελάτη: παλιές αναρτήσεις, σχέδια και έγγραφα. Τίποτα δεν αντιγράφεται εδώ.",
+    "For the hourly Claude worker, the Inglelandi NAS connector has to be ticked on its scheduled task.": "Για την ωριαία εργασία του Claude, ο connector Inglelandi NAS πρέπει να είναι επιλεγμένος στην προγραμματισμένη εργασία της.",
+    "No folder named yet.": "Δεν έχει οριστεί φάκελος ακόμη.",
+    "Change it in the profile (Research)": "Αλλάξτε τον στο προφίλ (Έρευνα)"
 }

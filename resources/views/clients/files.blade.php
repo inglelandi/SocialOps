@@ -20,6 +20,7 @@
             ]],
             [__('What Claude reads'), [
                 'slideshow' => [__('Posts slideshow'), 'presentation-chart-bar', null],
+                'nas' => [__('Office NAS folder'), 'server-stack', null],
                 'folder' => [__('Google Drive folder'), 'folder', $documents->where('chars', '>', 0)->count()],
                 'designs' => [__('Designs'), 'swatch', $designTotal],
                 'feed' => [__('Product feed'), 'tag', $productTotal],
@@ -55,6 +56,7 @@
                     @include('clients.files._sources')
                     @include('clients.files._reel')
                     @include('clients.files._slideshow')
+                    @include('clients.files._nas')
                     @include('clients.files._folder')
                     @include('clients.files._designs')
                     @include('clients.files._feed')
