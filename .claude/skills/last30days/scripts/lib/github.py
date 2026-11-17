@@ -166,6 +166,27 @@ def _compute_relevance(
     return round(relevance, 2)
 
 
+# Issue search matches body text, so an off-topic query still returns a full
+# page: keyword-stuffed spam issues and passing mentions in unrelated repos.
+# Their search rank is as good as a real hit's, so the blended score above
+# cannot separate them. A keyword result is kept only when its title names the
+# topic or its repo is named for it. 0.25 sits just above the 0.24 cap that
+# token_overlap_relevance gives a match on generic words alone.
+TOPICAL_FLOOR = 0.25
+
+
+def _clears_topical_floor(topic: str, title: str, repo: str) -> bool:
+    """True when a keyword-search result is about ``topic``.
+
+    Rank and engagement play no part. Person and project modes never call this.
+    """
+    repo_words = re.sub(r"[/_.\-]+", " ", repo)
+    return max(
+        token_overlap_relevance(topic, title),
+        token_overlap_relevance(topic, repo_words),
+    ) >= TOPICAL_FLOOR
+
+
 # GitHub search qualifiers the planner sometimes writes straight into the topic
 # string (e.g. "open source AI stars:>1000 created:>2025-03-20"). They must not
 # reach the query builder in `search_github`: it appends its own
@@ -391,11 +412,18 @@ def search_github(
     return envelope
 
 
-def parse_github_response(response: Dict[str, Any]) -> List[Dict[str, Any]]:
+def parse_github_response(
+    response: Dict[str, Any],
+    topic: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     """Normalize a ``search_github`` envelope into the skill's item shape.
 
-    Pure function: no I/O, no token, no enrichment. Applies the date
-    filter using the search context and sorts by relevance.
+    Pure function: no I/O, no token, no enrichment. Drops results that are
+    not about the topic, applies the date filter using the search context and
+    sorts by relevance.
+
+    ``topic`` is the research topic the results are judged against. It
+    defaults to the subject the search ran on.
     """
     if not isinstance(response, dict):
         return []
@@ -407,12 +435,17 @@ def parse_github_response(response: Dict[str, Any]) -> List[Dict[str, Any]]:
     from_date = context.get("from_date") or ""
     to_date = context.get("to_date") or ""
     count = context.get("count") or DEPTH_LIMITS["default"]
+    floor_topic = strip_search_qualifiers(extract_core_subject(topic or "")) or core
 
     items: List[Dict[str, Any]] = []
+    off_topic = 0
     for i, item in enumerate(raw_items[:count]):
         html_url = item.get("html_url", "")
         repo = _parse_repo_from_url(html_url)
         title = item.get("title", "")
+        if not _clears_topical_floor(floor_topic, title, repo):
+            off_topic += 1
+            continue
         body_text = item.get("body") or ""
         reactions_total = item.get("reactions", {}).get("total_count", 0) if isinstance(item.get("reactions"), dict) else 0
         comment_count = item.get("comments") or 0
@@ -450,6 +483,12 @@ def parse_github_response(response: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "is_pr": is_pr,
             },
         })
+
+    if off_topic:
+        _log(
+            f"Dropped {off_topic} of {off_topic + len(items)} results not about "
+            f"'{_truncate_diagnostic(floor_topic)}'"
+        )
 
     # Date filter
     if from_date and to_date:
@@ -538,21 +577,31 @@ def _fetch_item_comments(
     Returns:
         List of comment dicts with score, excerpt, author.
     """
+    if max_comments <= 0:
+        return []
+
     path = issue_url.replace("https://github.com/", "")
     path = path.replace("/pull/", "/issues/")
-    api_url = f"https://api.github.com/repos/{path}/comments?per_page={max_comments}&sort=reactions&direction=desc"
+    # GitHub's per-issue comments endpoint orders by ascending ID and does not
+    # support reaction sorting, so fetch its largest page and rank locally.
+    api_url = f"https://api.github.com/repos/{path}/comments?per_page=100"
 
     data = _fetch_json(api_url, token=token, timeout=15)
     if not data or not isinstance(data, list):
         return []
 
     comments = []
-    for c in data[:max_comments]:
+    for c in data:
+        if not isinstance(c, dict):
+            continue
+        user = c.get("user")
+        if _is_bot_user(user):
+            continue
         body = c.get("body") or ""
         excerpt = body[:300] + "..." if len(body) > 300 else body
         reactions = c.get("reactions", {})
         reaction_count = reactions.get("total_count", 0) if isinstance(reactions, dict) else 0
-        author = c.get("user", {}).get("login", "") if isinstance(c.get("user"), dict) else ""
+        author = user.get("login", "") if isinstance(user, dict) else ""
 
         comments.append({
             "score": reaction_count,
@@ -560,7 +609,28 @@ def _fetch_item_comments(
             "author": author,
         })
 
-    return comments
+    # Python's sort is stable, preserving API order for reaction-count ties.
+    comments.sort(key=lambda comment: comment["score"], reverse=True)
+    return comments[:max_comments]
+
+
+def _is_bot_user(user: Any) -> bool:
+    """Return whether a GitHub comment author is recognizably automated.
+
+    GitHub's REST payload marks bot accounts with ``user.type == "Bot"``.
+    Some compatible or partial payloads omit that field but retain the
+    conventional ``[bot]`` suffix on the login or display name. Missing user
+    metadata represents an unknown/deleted author, not evidence of automation.
+    """
+    if not isinstance(user, dict):
+        return False
+    if str(user.get("type") or "").casefold() == "bot":
+        return True
+    return any(
+        isinstance(user.get(field), str)
+        and user[field].strip().casefold().endswith("[bot]")
+        for field in ("login", "name")
+    )
 
 
 # ---------------------------------------------------------------------------
