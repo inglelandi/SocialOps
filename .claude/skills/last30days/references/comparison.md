@@ -35,10 +35,13 @@ if [ ! -f "$SKILL_DIR/scripts/last30days.py" ]; then
   exit 1
 fi
 
-COMPARISON_TOPIC=$(cat <<'TOPIC_EOF'
+# Keep the quoted heredoc outside command substitution: macOS Bash 3.2
+# can misparse apostrophes/backticks in a heredoc nested inside $(...).
+IFS= read -r -d '' COMPARISON_TOPIC <<'TOPIC_EOF' || true
 {TOPIC_A} vs {TOPIC_B} vs {TOPIC_C}
 TOPIC_EOF
-)
+# read reaches EOF without a NUL delimiter; drop the heredoc's final newline.
+COMPARISON_TOPIC=${COMPARISON_TOPIC%$'\n'}
 TOPIC_A_HANDLE=$(cat <<'HANDLE_EOF'
 {TOPIC_A_HANDLE}
 HANDLE_EOF
@@ -88,10 +91,13 @@ On a Grok Bot with the official X connector, follow `grok-bot-x.md` to fetch and
 
 ```bash
 (
-COMPARISON_TOPIC=$(cat <<'TOPIC_EOF'
+# Keep the quoted heredoc outside command substitution: macOS Bash 3.2
+# can misparse apostrophes/backticks in a heredoc nested inside $(...).
+IFS= read -r -d '' COMPARISON_TOPIC <<'TOPIC_EOF' || true
 {TOPIC_A} vs {TOPIC_B} vs {TOPIC_C}
 TOPIC_EOF
-)
+# read reaches EOF without a NUL delimiter; drop the heredoc's final newline.
+COMPARISON_TOPIC=${COMPARISON_TOPIC%$'\n'}
 MAIN_TARGETING=()
 COMPETITORS_PLAN_ARGS=()
 if [ "${LAST30DAYS_HOST:-}" = "grok-bot" ] && [ "${LAST30DAYS_X_HOST_LANE:-}" = "1" ]; then
@@ -145,7 +151,7 @@ Voice contract LAWs 1, 3, 5 apply to comparisons unchanged (omit unnecessary tra
 **Required comparison structure (match the April 9 exemplar):**
 
 ````
-🌐 last30days v{VERSION} · synced {YYYY-MM-DD}
+{the engine's first line, copied verbatim}
 
 # {TOPIC_A} vs {TOPIC_B} [vs {TOPIC_C}]: What the Community Says (/Last30Days)
 
@@ -220,14 +226,14 @@ I've compared {TOPIC_A} vs {TOPIC_B} [vs ...] using the latest community data. S
 - [follow-up on the emerging-stack combination pattern]
 ````
 
-**On Claude Code** (`CLAUDECODE` set), `references/synthesis.md` NO MARKDOWN LISTS applies here too: write the Strengths, Weaknesses, and follow-up bullets as `• ` lines, not `- ` lists.
+**On Claude Code** (`CLAUDECODE` set), `references/synthesis.md` NO MARKDOWN LISTS applies here too: follow the checklist's list line, and without one write the Strengths, Weaknesses, and follow-up bullets as `• ` lines, each but the last ending in `\`, not `- ` lists.
 
 **Do NOT:**
 - Use `What I learned:` prose label (that is general-query voice)
 - Use bold-lead-in paragraphs with ` - ` separators for the body (that is general-query voice)
 - Use a `KEY PATTERNS from the research:` numbered list (replaced by per-entity Strengths/Weaknesses bullets and the emerging-stack paragraph)
 - Fabricate a `## Notable Stats` block (the engine footer IS the stats block, LAW 5)
-- Attach like, upvote, view, or point counts to quotes and attributions (`references/synthesis.md` COUNTS IN PROSE; entity scale figures stay)
+- Attach like, upvote, view, or point counts to quotes and attributions, or add pulled-quote lines (`references/synthesis.md` COUNTS IN PROSE; entity scale figures stay)
 - Produce section headers outside the six listed above (`## Quick Verdict`, `## {Entity}` per entity, `## Head-to-Head`, `## The Bottom Line`, `## The emerging stack` are the only allowed `##` headers per LAW 4 comparison exception)
 
 **Reference exemplar:** `$LAST30DAYS_MEMORY_DIR/openclaw-vs-hermes-vs-paperclip-LAUNCH-VIDEO-april9-exemplar.md` preserves the April 9 canonical output with full structural analysis. Match this shape section-for-section.
