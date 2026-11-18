@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\OpenStorageFolders;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\CalendarController;
@@ -40,8 +41,10 @@ Route::post('/refresh', function () {
     Artisan::call('migrate', ['--force' => true]);
     file_exists(storage_path('oauth-private.key')) || Artisan::call('passport:keys'); // the Claude connector's login signs its tokens with these
     Artisan::call('optimize');
+    // the media folders Laravel used to make 0700, so the server's backup can read them (the ones another user owns are counted)
+    $storage = OpenStorageFolders::open([storage_path('app')]);
 
-    return redirect()->route('dashboard')->with('status', 'app-refreshed');
+    return redirect()->route('dashboard')->with('status', 'app-refreshed')->with('storage_closed', count($storage['closed']));
 })->middleware(['auth', 'can:admin'])->name('refresh'); // it runs migrations: admins only, like the link in the side navigation
 Route::get('/refresh', fn () => view('refresh'))->middleware(['auth', 'can:admin']); // reachable even while the dashboard fails before a migration
 

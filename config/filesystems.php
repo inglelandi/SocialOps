@@ -33,6 +33,9 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
+            // the clients' media folders (clients/<slug>/inbox) are made 0755, not Laravel's default 0700, so the server's
+            // backup can read them whichever user it runs as; the files are 0644 (storage:open-folders opens older ones)
+            'directory_visibility' => 'public',
             'serve' => true,
             'throw' => false,
             'report' => false,

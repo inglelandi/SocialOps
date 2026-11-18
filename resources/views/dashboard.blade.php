@@ -13,6 +13,10 @@
             @if (session('status'))
                 <p class="flex items-center gap-1.5 text-green-600"><x-icon name="check-circle" class="h-5 w-5" />{{ __(ucfirst(str_replace('-', ' ', session('status')))) }}.</p>
             @endif
+            @if (session('storage_closed'))
+                {{-- storage:open-folders could not open folders another server user owns: the backup still cannot read those --}}
+                <p class="flex items-start gap-1.5 text-amber-700"><x-icon name="exclamation-triangle" class="mt-0.5 h-5 w-5 flex-none" />{{ __(':n stored folders or files belong to another user on the server, so the backup cannot read them. In Plesk, have them given to the site\'s user (plesk repair fs with the domain).', ['n' => session('storage_closed')]) }}</p>
+            @endif
             @if ($clients->isEmpty())
                 <x-empty-state icon="building-storefront" action-icon="plus" class="bg-white" :action="__('Add the first client')" :href="auth()->user()->can('add-clients') ? route('clients.create') : null">{{ __('No clients yet. A client profile holds the accounts, the voice, the pillars and the approvers; everything else hangs off it.') }}</x-empty-state>
             @elseif ($quiet)
