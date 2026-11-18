@@ -530,7 +530,7 @@
     "Posts the client published in the app, last 30 days, as Published posts on the calendar": "Αναρτήσεις που δημοσίευσε ο πελάτης στην εφαρμογή, τελευταίες 30 ημέρες, ως Δημοσιευμένες στο ημερολόγιο",
     "posts waiting": "αναρτήσεις σε αναμονή",
     "praise": "έπαινος",
-    "Press this once after \"Pull now\" in Plesk Git: it runs new database migrations and rebuilds the caches.": "Πάτα το μία φορά μετά το \"Pull now\" στο Plesk Git: τρέχει τα νέα migrations της βάσης και ξαναχτίζει τις caches.",
+    "Press this once after \"Pull now\" in Plesk Git: it runs new database migrations, rebuilds the caches and makes the stored media folders readable for the server backup.": "Πάτα το μία φορά μετά το \"Pull now\" στο Plesk Git: τρέχει τα νέα migrations της βάσης, ξαναχτίζει τις caches και κάνει τους φακέλους των αρχείων αναγνώσιμους για το backup του server.",
     "Preview": "Προεπισκόπηση",
     "Priority": "Προτεραιότητα",
     "Profile": "Προφίλ",
@@ -1111,5 +1111,6 @@
     "The client's folder on the office NAS. Claude opens it through the Inglelandi NAS connector when it plans or writes posts for this client: past posts, designs and documents. Nothing is copied here.": "Ο φάκελος του πελάτη στο NAS του γραφείου. Το Claude τον ανοίγει μέσω του connector Inglelandi NAS όταν σχεδιάζει ή γράφει αναρτήσεις για αυτόν τον πελάτη: παλιές αναρτήσεις, σχέδια και έγγραφα. Τίποτα δεν αντιγράφεται εδώ.",
     "For the hourly Claude worker, the Inglelandi NAS connector has to be ticked on its scheduled task.": "Για την ωριαία εργασία του Claude, ο connector Inglelandi NAS πρέπει να είναι επιλεγμένος στην προγραμματισμένη εργασία της.",
     "No folder named yet.": "Δεν έχει οριστεί φάκελος ακόμη.",
-    "Change it in the profile (Research)": "Αλλάξτε τον στο προφίλ (Έρευνα)"
+    "Change it in the profile (Research)": "Αλλάξτε τον στο προφίλ (Έρευνα)",
+    ":n stored folders or files belong to another user on the server, so the backup cannot read them. In Plesk, have them given to the site's user (plesk repair fs with the domain).": ":n αποθηκευμένοι φάκελοι ή αρχεία ανήκουν σε άλλον χρήστη του server, οπότε το backup δεν μπορεί να τα διαβάσει. Στο Plesk, ζητήστε να δοθούν στον χρήστη του site (plesk repair fs με το domain)."
 }
