@@ -14,7 +14,7 @@ use Symfony\Component\Yaml\Yaml;
 /** Parses and validates a brand profile written in the config/clients/example.yaml format. */
 final class ClientProfile
 {
-    public const SECTIONS = ['accounts', 'languages', 'extra_languages', 'about', 'voice', 'notes', 'pillars', 'hashtags', 'research', 'approval', 'slots', 'saved_replies', 'signatures', 'fields', 'utm', 'webhooks', 'key_dates', 'brand_color'];
+    public const SECTIONS = ['accounts', 'languages', 'extra_languages', 'about', 'voice', 'notes', 'pillars', 'hashtags', 'research', 'approval', 'slots', 'saved_replies', 'signatures', 'fields', 'utm', 'webhooks', 'key_dates', 'brand_color', 'nas_folder'];
 
     public const PLATFORMS = ['instagram', 'facebook', 'tiktok', 'linkedin'];
 
@@ -33,7 +33,7 @@ final class ClientProfile
      */
     public static function parse(string $yaml): array
     {
-        $data = Arr::only(self::parseYaml($yaml), self::SECTIONS) + ['extra_languages' => [], 'about' => [], 'notes' => '', 'slots' => [], 'saved_replies' => [], 'signatures' => [], 'fields' => [], 'utm' => false, 'webhooks' => [], 'key_dates' => [], 'brand_color' => '', 'research' => ['sources' => [], 'excluded_domains' => [], 'excluded_topics' => []]];
+        $data = Arr::only(self::parseYaml($yaml), self::SECTIONS) + ['extra_languages' => [], 'about' => [], 'notes' => '', 'slots' => [], 'saved_replies' => [], 'signatures' => [], 'fields' => [], 'utm' => false, 'webhooks' => [], 'key_dates' => [], 'brand_color' => '', 'nas_folder' => '', 'research' => ['sources' => [], 'excluded_domains' => [], 'excluded_topics' => []]];
 
         $data['accounts'] = self::handles((array) ($data['accounts'] ?? []));
 
@@ -55,6 +55,9 @@ final class ClientProfile
             }
             if (($data['approval']['auto_approve_on_timeout'] ?? false) && ($data['approval']['policy'] ?? null) !== 'optional') {
                 $v->errors()->add('approval.auto_approve_on_timeout', __('Auto-approve on timeout is only allowed when the policy is optional.'));
+            }
+            if (is_string($data['nas_folder'] ?? null) && ! self::nasFolderOk($data['nas_folder'])) {
+                $v->errors()->add('nas_folder', __('The NAS folder is a folder inside Clients, such as Dokos Home or Dokos Home/Instagram Posts.'));
             }
         });
 
@@ -119,7 +122,37 @@ final class ClientProfile
             'webhooks' => array_map(fn ($r) => ['url' => $r['url'], 'secret' => $r['secret'] ?? '', 'events' => array_values((array) ($r['events'] ?? []))], $rows($form['webhooks'] ?? [], fn ($r) => ($r['url'] ?? '') !== '')),
             'key_dates' => $rows($form['key_dates'] ?? [], fn ($r) => ($r['date'] ?? '') !== '' || ($r['label'] ?? '') !== ''),
             'brand_color' => self::color((string) ($form['brand_color'] ?? '')),
+            'nas_folder' => self::nasFolder((string) ($form['nas_folder'] ?? '')),
         ];
+    }
+
+    /**
+     * The client's folder on the office NAS as a path inside its Clients folder, the way the Inglelandi NAS connector takes
+     * it: a path copied from Explorer (\\server\Share\Clients\Dokos Home, Z:\Clients\Dokos Home) or from the NAS itself
+     * (/volume1/Share/Clients/Dokos Home) loses everything up to Clients, backslashes become slashes, no slash at either end.
+     */
+    public static function nasFolder(string $value): string
+    {
+        $path = preg_replace('#/{2,}#', '/', str_replace('\\', '/', trim($value)));
+        if (preg_match('#^(/|[a-z]:/)#i', $path)) {
+            $cut = stripos($path.'/', '/clients/');
+            if ($cut === false) {
+                return rtrim($path, '/ '); // still absolute: the validation names it
+            }
+            $path = substr($path.'/', $cut + strlen('/clients/'));
+        }
+
+        return trim($path, '/ ');
+    }
+
+    /** A path that stays inside Clients: no part is empty, `.`, `..` or hidden, and it is not absolute (no Clients in it to cut at). */
+    public static function nasFolderOk(string $path): bool
+    {
+        if ($path === '') {
+            return true;
+        }
+
+        return ! preg_match('#^(/|[a-z]:)#i', $path) && collect(explode('/', $path))->every(fn ($part) => trim($part) !== '' && ! str_starts_with($part, '.'));
     }
 
     /**
@@ -301,6 +334,7 @@ final class ClientProfile
             'key_dates.*.date' => ['required', 'date'],
             'key_dates.*.label' => ['required', 'string'],
             'brand_color' => ['nullable', 'string', 'regex:/^#[0-9a-f]{6}$/'],
+            'nas_folder' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

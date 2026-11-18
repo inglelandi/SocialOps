@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\Post;
 use App\Planning\ClaudeQueue;
 use App\Planning\ClientReference;
+use App\Planning\NasFolder;
 use App\Planning\PillarQuota;
 use App\Planning\PlanRequest;
 use App\Planning\Prompt;
@@ -19,7 +20,7 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Step 1 of planning a batch for a client: the brief you plan from. It holds the brand profile, the pillar quota for the batch, the publishing window with its key dates, holidays and posting slots, the recent posts not to repeat, the client\'s own Drive files (the team\'s posts slideshow with the posts prepared to go up, to plan around and never plan again, the posts it published before Social Ops, not to repeat, its reference files, as facts, and its past designs as Claude described them from the images), the formats and the caption rules. Research the current trends yourself (the last30days skill or web search), plan the posts, write the captions, then hand everything to save-plan. Nothing is published.')]
+#[Description('Step 1 of planning a batch for a client: the brief you plan from. It holds the brand profile, the pillar quota for the batch, the publishing window with its key dates, holidays and posting slots, the recent posts not to repeat, the client\'s own Drive files (the team\'s posts slideshow with the posts prepared to go up, to plan around and never plan again, the posts it published before Social Ops, not to repeat, its reference files, as facts, and its past designs as Claude described them from the images), the client\'s folder on the office NAS to open with the Inglelandi NAS connector (nas_folder), the formats and the caption rules. Research the current trends yourself (the last30days skill or web search), plan the posts, write the captions, then hand everything to save-plan. Nothing is published.')]
 class GetPlanningBrief extends Tool
 {
     use ScopedToToken;
@@ -72,6 +73,7 @@ class GetPlanningBrief extends Tool
             'shop' => $reference['products'] !== '' ? $reference['products'].' Search it with find-products.' : null,
             'reference_folder' => $reference['folder'],
             'reference_files' => $reference['files'],
+            'nas_folder' => NasFolder::brief($client, 'plan'),
             'caption_rules' => 'For each post write captions per platform and language ('.implode(', ', $languages).') in the voice above, the hook in the first line, placeholders like {{phone}} as written in the profile fields. Limits: '
                 .implode(', ', array_map(fn ($p, $n) => "{$p} {$n}", array_keys(PostRequest::CAPTION_MAX), PostRequest::CAPTION_MAX)).' characters. '.self::hashtagRule($profile['hashtags'] ?? []).' Add alt text per language and the design text (what goes on the graphic or in the video). Greek captions are reviewed by a person; do not publish anything.',
             'then' => 'Write the captions of every post (caption_rules above), the posts are not done without them. Then call save-plan with the client, the trend brief you wrote (Markdown) and the posts: date, platforms, format, pillar, title, angle, trend_signal, why_now, asset_brief, caption_brief, fixed_date (true when the post is about that specific day and must not move), products (the ids find-products gave for the shop products the post links, when the client has a shop), captions {'.implode(', ', array_map(fn ($l) => "{$l}: {platform: caption}", $languages)).', hashtags: [], alt_text: {lang: text}, design: {lang: text}, notes_for_reviewer}, language first, then platform. A post that arrives without captions is listed under captions_missing: write those with get-caption-brief and update-post.',

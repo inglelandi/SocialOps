@@ -282,6 +282,9 @@
             <x-text-input id="p-competitors" name="p[research][competitors]" type="text" class="block w-full text-sm" :value="$text('research.competitors', ' ')" placeholder="@otherbeachbar" aria-label="{{ __('Competitor Instagram accounts to watch') }}" />
         </div>
     </x-field>
+    <x-field :label="__('Folder on the office NAS')" for="p-nas-folder" :help="__('The client\'s folder inside Clients on the NAS. Claude opens it through the Inglelandi NAS connector when it plans or writes posts for this client. A path copied from Explorer works too.')">
+        <x-text-input id="p-nas-folder" name="p[nas_folder]" type="text" class="block w-full text-sm" :value="$p('nas_folder')" placeholder="Dokos Home" maxlength="255" />
+    </x-field>
 </x-section>
 
 <x-section icon="chat-bubble-left-ellipsis" x-show="tab === 'more'" x-cloak :title="__('Replies and webhooks')" :description="__('Answers you give often, and the addresses developers connect.')">
