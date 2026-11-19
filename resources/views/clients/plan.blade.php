@@ -62,7 +62,7 @@
                                 </div>
                                 <div>
                                     <x-input-label for="from" :value="__('From')" />
-                                    <x-text-input id="from" name="from" type="date" class="mt-1 block w-full" :value="old('from', now()->addDay()->toDateString())" />
+                                    <x-text-input id="from" name="from" type="date" class="mt-1 block w-full" :value="old('from', now()->toDateString())" />
                                 </div>
                                 <div>
                                     <x-input-label for="days" :value="__('Days')" />
@@ -89,7 +89,7 @@
             @else
                 @php($mcpDescription = __('Claude plans the posts with their captions and puts them on the calendar as Drafts, with a review sheet in Reports. Press the button and Claude does it at its next run, once an hour.'))
                 <x-section icon="sparkles" :title="__('Plan with Claude')" :description="$mcpDescription">
-                    <div class="py-5" x-data="{ posts: 12, from: '{{ now()->addMonthNoOverflow()->startOfMonth()->toDateString() }}', days: 30, instruction: '', copied: false,
+                    <div class="py-5" x-data="{ posts: 12, from: '{{ now()->toDateString() }}', days: 30, instruction: '', copied: false,
                         text() { return `{{ __('Plan :posts posts for :client (client ":slug") from :from for :days days.', ['posts' => '${this.posts}', 'client' => $client->name, 'slug' => $client->slug, 'from' => '${this.from}', 'days' => '${this.days}']) }}` + (this.instruction.trim() ? ' {{ __('About:') }} ' + this.instruction.trim() + '.' : '') + ` {{ __('Use the Social Ops tools: get-planning-brief first, research the current trends for this client (the last30days skill or web search), plan the posts and write the captions in :languages, then save-plan. Publish nothing.', ['languages' => strtoupper(implode(' + ', array_merge($client->profile['languages'], $client->profile['extra_languages'] ?? [])))]) }}`; },
                         copy() { navigator.clipboard.writeText(this.text()).then(() => { this.copied = true; setTimeout(() => this.copied = false, 2000) }) } }">
                         @if (session('status') === 'job-queued')
