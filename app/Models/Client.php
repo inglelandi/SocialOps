@@ -49,6 +49,35 @@ class Client extends Model
      * uploaded_via (Asset::sources(), link by default) and source_id. A file whose source_id is filed already is not filed
      * again: the asset that has it comes back instead (wasRecentlyCreated false).
      */
+    /**
+     * Why a file cannot be filed for this client on the server, before anything is downloaded or written: the nearest
+     * folder on the way to the client's inbox that exists but cannot be written by the user the site runs as (it belongs
+     * to another server user, as happened on the Plesk server on 2026-11-19: "Unable to create a directory at
+     * …/clients/dokos-home/inbox"). Null when the inbox can be written, or when the disk is not a local folder.
+     */
+    public function inboxProblem(): ?string
+    {
+        $disk = Storage::disk(config('filesystems.default'));
+        if (! method_exists($disk, 'path')) {
+            return null;
+        }
+        $folder = $disk->path("clients/{$this->slug}/inbox");
+        while (! is_dir($folder)) { // the deepest folder that exists: that is the one mkdir needs to write into
+            if (dirname($folder) === $folder) {
+                return null;
+            }
+            $folder = dirname($folder);
+        }
+        if (is_writable($folder)) {
+            return null;
+        }
+        $name = fn (int $id) => function_exists('posix_getpwuid') ? (posix_getpwuid($id)['name'] ?? (string) $id) : (string) $id;
+        $owner = $name((int) fileowner($folder));
+        $site = function_exists('posix_geteuid') ? $name(posix_geteuid()) : get_current_user();
+
+        return "The client's files cannot be written on the server: {$folder} belongs to \"{$owner}\" (mode ".substr(sprintf('%o', fileperms($folder)), -4).") and the site runs as \"{$site}\". An admin has the site's folders given back to its user in Plesk (Repair Kit, file system permissions for the domain, or plesk repair fs on the command line); Refresh after update then counts what is left.";
+    }
+
     public function storeAsset(UploadedFile $file, array $attrs = []): Asset
     {
         $disk = config('filesystems.default');
