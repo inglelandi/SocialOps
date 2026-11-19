@@ -1,7 +1,7 @@
 # A copy of the last30days skill. Do not edit by hand: .github/scripts/update-last30days.sh
 # rewrites this folder, and the daily "last30days update" PR brings each new version.
 repo=https://github.com/mvanhorn/last30days-skill
-commit=9cee9178210ee8492fac558df89855ef334adbcc
-version=4.3.0
-copied=2026-11-17
+commit=a854f3bcb2c4344d7498426d653378510f8b253a
+version=4.3.2
+copied=2026-11-18
 left_out=assets/ (the README's demo pictures and audio)
