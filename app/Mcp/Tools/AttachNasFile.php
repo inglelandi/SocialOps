@@ -50,6 +50,10 @@ class AttachNasFile extends Tool
         // otherwise hide it behind "An internal server error occurred", which left the worker guessing (2026-11-19)
         try {
             if (! $asset) {
+                // the server's own folders first: a folder that belongs to another user is named before a download is wasted on it
+                if ($problem = $client->inboxProblem()) {
+                    throw ValidationException::withMessages(['file' => $problem.' Leave the post without files and tell the team.']);
+                }
                 try {
                     $upload = NasConnector::fetch($input['url'], basename($path));
                 } catch (RuntimeException $e) {

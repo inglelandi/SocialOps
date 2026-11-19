@@ -133,6 +133,23 @@ test('what attach-nas-file refuses, before it fetches anything', function () {
     expect($this->client->assets()->where('uploaded_via', 'nas')->count())->toBe(0)->and($this->post->fresh()->assets)->toHaveCount(0);
 });
 
+test('a client folder the site cannot write is named, with its owner, before anything is downloaded', function () {
+    // the deepest existing folder on the way to the inbox, as on the Plesk server where clients/ belonged to another user
+    $clients = Storage::disk('local')->path('clients');
+    mkdir($clients, 0755, true);
+    chmod($clients, 0555);
+    try {
+        Http::fake();
+        attach(['post' => $this->post->id, 'url' => NAS_LINK, 'path' => 'Dokos Home/Photos/IMG_0001.jpg'])
+            ->assertHasErrors(["The client's files cannot be written on the server: {$clients} belongs to \"", '(mode 0555) and the site runs as "', 'plesk repair fs', 'Leave the post without files and tell the team.']);
+        Http::assertNothingSent();
+        expect($this->client->inboxProblem())->toContain($clients);
+    } finally {
+        chmod($clients, 0755);
+    }
+    expect($this->client->inboxProblem())->toBeNull();
+})->skip(fn () => function_exists('posix_geteuid') && posix_geteuid() === 0, 'root writes anywhere, so a closed folder cannot be shown');
+
 test('the tool tells Claude its fields, and a failure after the checks is said in words instead of an internal server error', function () {
     $schema = (new AttachNasFile)->toArray()['inputSchema'];
     expect(array_keys($schema['properties']))->toBe(['post', 'path', 'url'])->and($schema['required'])->toBe(['post', 'path']);
