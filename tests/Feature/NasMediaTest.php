@@ -133,6 +133,22 @@ test('what attach-nas-file refuses, before it fetches anything', function () {
     expect($this->client->assets()->where('uploaded_via', 'nas')->count())->toBe(0)->and($this->post->fresh()->assets)->toHaveCount(0);
 });
 
+test('the tool tells Claude its fields, and a failure after the checks is said in words instead of an internal server error', function () {
+    $schema = (new AttachNasFile)->toArray()['inputSchema'];
+    expect(array_keys($schema['properties']))->toBe(['post', 'path', 'url'])->and($schema['required'])->toBe(['post', 'path']);
+
+    // the client's files folder cannot be written (here: the disk's root is a file, so the folder cannot be made)
+    $blocked = sys_get_temp_dir().'/socialops-blocked-'.uniqid();
+    file_put_contents($blocked, 'not a folder');
+    config(['filesystems.disks.blocked' => ['driver' => 'local', 'root' => $blocked], 'filesystems.default' => 'blocked']);
+    Http::fake([NAS.'/download/*' => Http::response(nasJpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
+    attach(['post' => $this->post->id, 'url' => NAS_LINK, 'path' => 'Dokos Home/Photos/IMG_0001.jpg'])
+        ->assertHasErrors(['Social Ops could not file the download (UnableToCreateDirectory:', 'cannot be written by the site\'s user', 'plesk repair fs', 'Leave the post without files and tell the team.']);
+    @unlink($blocked);
+    expect($this->client->assets()->count())->toBe(0)->and($this->post->fresh()->assets)->toHaveCount(0)
+        ->and(glob(sys_get_temp_dir().'/nas*') ?: [])->toBe([]);
+});
+
 test('what the connector answers is read back in words Claude can act on, and nothing is filed', function () {
     // one fake per case: Laravel's HTTP fakes stack and the first match answers, so each case gets its own link
     $link = fn (string $case) => NAS.'/download/tok_'.$case.'_0123456789abcdef';
