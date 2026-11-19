@@ -24,7 +24,9 @@ afterEach(function () {
 
 test('a path outside the folders the site may open is "no ffmpeg", never a warning', function () {
     $base = base_path().PATH_SEPARATOR.sys_get_temp_dir();
-    $code = 'require "'.base_path('vendor/autoload.php').'"; set_error_handler(function ($n, $s) { throw new ErrorException($s); });'
+    // only the class itself, not Composer's autoloader: packages that probe the machine on load (agent-detector looks at /opt) would
+    // warn under the restriction too, and the check is about ReelAssembler's own lookup
+    $code = 'set_error_handler(function ($n, $s) { throw new ErrorException($s); }); require "'.base_path('app/Media/ReelAssembler.php').'";'
         .' echo App\Media\ReelAssembler::runnable("/var/www/vhosts/socialops.example.com/bin/ffmpeg") ? "yes" : "no";';
     $run = new Process([PHP_BINARY, '-d', 'open_basedir='.$base, '-r', $code]);
     $run->run();
