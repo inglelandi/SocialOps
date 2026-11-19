@@ -1,5 +1,5 @@
 {{-- A lookalike of the post on one network: enough for the client to judge image, text and hashtags. Needs $post, $platform, $client and $assetUrl (closure); $live (the staff form) renders a line per language so the form can fill it as you type. --}}
-@php($asset = $post->assets->first())
+@php($media = $post->assets->values())
 @php($vertical = in_array($post->format, ['reel', 'story', 'tiktok_video', 'tiktok_photos']))
 @php($labels = ['instagram' => 'Instagram', 'facebook' => 'Facebook', 'tiktok' => 'TikTok', 'linkedin' => 'LinkedIn'])
 @php($variants = $post->variants->where('platform', $platform)->keyBy('lang'))
@@ -23,14 +23,8 @@
             <div class="px-3 pb-2 whitespace-pre-line opacity-80">{{ $post->signatureFor($platform) }}</div>
         @endif
     @endif
-    <div class="bg-gray-100 {{ $vertical ? 'aspect-[9/16]' : 'aspect-square' }} flex items-center justify-center overflow-hidden" data-preview-media data-current="{{ $asset ? $asset->kind.':'.$asset->id : '' }}">
-        @if (! $asset)
-            <span class="text-xs text-gray-600">{{ __('Photo or video to follow') }}</span>
-        @elseif ($asset->kind === 'video')
-            <video src="{{ $assetUrl($asset) }}" controls playsinline class="h-full w-full object-cover"></video>
-        @else
-            <img src="{{ $assetUrl($asset) }}" alt="" class="h-full w-full object-cover" />
-        @endif
+    <div class="relative bg-gray-100 {{ $vertical ? 'aspect-[9/16]' : 'aspect-square' }} overflow-hidden" data-preview-media data-current="{{ $media->map(fn ($a) => $a->kind.':'.$a->id)->join(',') }}">
+        @include('portal._media', ['media' => $media, 'assetUrl' => $assetUrl])
     </div>
     @foreach ($langs as $lang)
         @php($v = $variants[$lang] ?? null)
