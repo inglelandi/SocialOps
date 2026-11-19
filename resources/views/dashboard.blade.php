@@ -71,7 +71,7 @@
                         <x-section icon="chart-pie" :title="__('Pillar mix off target')" :description="__('Share of posts per pillar, :days days back and ahead, against the profile.', ['days' => \App\Planning\PillarMix::DAYS])" flush>
                             <ul class="divide-y divide-gray-200">
                                 @foreach ($drift as $row)
-                                    <li class="{{ $item }}"><a class="font-medium text-gray-900 hover:text-brand-600" href="{{ route('clients.edit', $row['client']) }}">{{ $row['client']->name }}</a>
+                                    <li class="{{ $item }}"><a class="font-medium text-gray-900 hover:text-brand-600" href="{{ route('clients.edit', $row['client']) }}#content">{{ $row['client']->name }}</a>
                                         <span class="text-gray-600">@foreach ($row['mix']['drifted'] as $pillar){{ __(':pillar at :actual%, target :target%', ['pillar' => str_replace('_', ' ', $pillar), 'actual' => $row['mix']['rows'][$pillar]['actual'], 'target' => $row['mix']['rows'][$pillar]['target']]) }}@if (! $loop->last) · @endif @endforeach</span>
                                     </li>
                                 @endforeach

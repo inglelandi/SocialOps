@@ -7,6 +7,6 @@
         @else
             <p class="text-gray-600">{{ __('No folder named yet.') }}</p>
         @endif
-        <a href="{{ route('clients.edit', $client) }}" class="mt-3 inline-flex items-center gap-1 font-medium text-gray-900 hover:text-brand-600"><x-icon name="pencil-square" class="h-4 w-4" />{{ __('Change it in the profile (Research)') }}</a>
+        <a href="{{ route('clients.edit', $client) }}#research" class="mt-3 inline-flex items-center gap-1 font-medium text-gray-900 hover:text-brand-600"><x-icon name="pencil-square" class="h-4 w-4" />{{ __('Change it in the profile (Research)') }}</a>
     </div>
 </x-section>

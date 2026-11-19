@@ -6,3 +6,23 @@
         <button type="button" role="tab" data-tab="{{ $key }}" class="inline-flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-left" :class="tab === '{{ $key }}' ? 'bg-white font-medium text-gray-900 shadow-sm ring-1 ring-gray-200' : 'text-gray-600 hover:text-gray-900'" :aria-selected="tab === '{{ $key }}'" x-on:click="tab = '{{ $key }}'">@isset($icons[$key])<x-icon :name="$icons[$key]" class="h-4 w-4" />@endisset{{ $label }}</button>
     @endforeach
 </nav>
+<script>
+    // The section to open: the address's #section first (a link such as …/edit#research opens it, whatever was opened before), else
+    // the one opened last in this browser, else Basics; the open one goes into the address, so a reload stays on it.
+    window.clientForm = () => ({
+        tabs: @js(array_keys($sections)),
+        tab: 'basics',
+        init() {
+            let last = null;
+            try { last = localStorage.getItem('client-tab'); } catch (e) {}
+            const hash = location.hash.slice(1);
+            this.tab = this.tabs.includes(hash) ? hash : (this.tabs.includes(last) ? last : 'basics');
+            try { localStorage.setItem('client-tab', this.tab); } catch (e) {} // a section a link opened is the one opened last
+            this.$watch('tab', tab => {
+                try { localStorage.setItem('client-tab', tab); } catch (e) {}
+                history.replaceState(null, '', '#' + tab);
+            });
+        },
+        fromHash() { const hash = location.hash.slice(1); if (this.tabs.includes(hash)) this.tab = hash; },
+    });
+</script>

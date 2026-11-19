@@ -5,7 +5,7 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <style>[x-cloak] { display: none !important }</style>
-            <div x-data="{ tab: localStorage.getItem('client-tab') || 'basics' }" x-init="if (! $el.querySelector(`[data-tab='${tab}']`)) tab = 'basics'; $watch('tab', t => localStorage.setItem('client-tab', t))" class="md:flex md:gap-8">
+            <div x-data="clientForm()" x-on:hashchange.window="fromHash()" class="md:flex md:gap-8">
                 @include('clients._nav')
                 <form method="POST" action="{{ route('clients.store') }}" class="min-w-0 flex-1">
                     @include('clients._form')
