@@ -158,6 +158,10 @@ Without root (only the site's own folders, as on most Plesk subscriptions): down
 
 Without ffmpeg the box says why (not installed, no file at `FFMPEG_PATH`, a path outside the site's folders, a file without the 755 permissions) and nothing else changes.
 
+## 5b. Photos from the office NAS (optional) → `NAS_CONNECTOR_URL`, `NAS_DOWNLOAD_KEY`
+
+With the Inglelandi NAS connector running (github.com/inglelandi/nas-connector, its README step 7), Claude can put photos and videos from a client's NAS folder on the posts it plans or writes (D30). Make a key of 32 characters or more, save it on the NAS as `secrets/download_key` and restart the connector's project there; then in Social Ops → Settings set `NAS_CONNECTOR_URL` to the connector's address (`https://nas-mcp.inglelandi.com`) and `NAS_DOWNLOAD_KEY` to the same key. Each client's profile names its folder (Research → Folder on the office NAS). Without the key Claude is told not to try, and nothing else changes.
+
 ## 6. First client: Fuse Pharmacy (decision D4)
 
 1. Clients → New client. Code `FUSE`, type `brand`. Fill in the form: accounts, voice, pillars, hashtags, approver name and e-mail, SLA (a starter profile is in the project Library, `clients/fuse-pharmacy.yaml`; `php artisan clients:import` loads such a file, or copy its values into the form).
