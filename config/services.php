@@ -45,6 +45,13 @@ return [
     ],
 
     // Dropbox app (optional): pulls a shared folder into the asset inbox, OAuth with PKCE so only the app key is needed
+    // the Inglelandi NAS connector (D29, D30): its address, and the download key it shares with this server so Claude can
+    // put photos and videos from a client's NAS folder on posts (secrets/download_key on the NAS, 32 characters or more)
+    'nas' => [
+        'url' => env('NAS_CONNECTOR_URL'),
+        'download_key' => env('NAS_DOWNLOAD_KEY'),
+    ],
+
     'dropbox' => [
         'app_key' => env('DROPBOX_APP_KEY'),
     ],

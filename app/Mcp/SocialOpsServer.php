@@ -2,6 +2,7 @@
 
 namespace App\Mcp;
 
+use App\Mcp\Tools\AttachNasFile;
 use App\Mcp\Tools\CreateDraft;
 use App\Mcp\Tools\FindProducts;
 use App\Mcp\Tools\GetCaptionBrief;
@@ -31,7 +32,7 @@ Start with list-clients, then use the client's id or slug in the other tools. Ca
 To plan a month: get-planning-brief (the profile, the quota, the window, the recent posts), research the current trends yourself (the last30days skill or web search), plan the posts and write their captions (when the client has a shop, link real products found with find-products), then save-plan files them as Drafts with a review sheet.
 To write, shorten or change the captions of one post: get-caption-brief (the voice, the limits, the current captions), write them, then update-post.
 To describe a design from a client's Drive folder (a post it published before, as a graphic, photo, PDF or video): get-design (Drive's preview and where the file sits), look at it, then save-design-description with what is visible, never invented; each design is described once.
-When a brief names a nas_folder, the client keeps its files on the office NAS too: open that folder (and only that one) with the Inglelandi NAS connector before you plan or write, as its how says.
+When a brief names a nas_folder, the client keeps its files on the office NAS too: open that folder (and only that one) with the Inglelandi NAS connector before you plan or write, as its how says. When it also says Social Ops copies files (copies_files true), give the posts you plan or write that have no files a photo or video from that folder: view_image to choose, the connector's get_download_link, then attach-nas-file here; the team changes them in the app.
 Work the team queued in the app (the scheduled worker's job): list-claude-jobs, then the three recipes above; each job says how to clear it.
 A Draft still goes through human review and approval in the app; nothing here publishes. Greek captions are reviewed by a person.
 MD)]
@@ -50,6 +51,7 @@ class SocialOpsServer extends Server
         GetDesign::class,
         SaveDesignDescription::class,
         SavePlan::class,
+        AttachNasFile::class,
         ListComments::class,
         ReplyToComment::class,
         MonthNumbers::class,

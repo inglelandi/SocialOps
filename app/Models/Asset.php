@@ -27,13 +27,13 @@ class Asset extends Model
 
     /**
      * Every `uploaded_via` value with its label: the client's no-login link, a staff upload on the assets page,
-     * a watched Google Drive or Dropbox folder, a Canva import, a Reel made from clips.
+     * a watched Google Drive or Dropbox folder, a Canva import, a Reel made from clips, a copy Claude made from the office NAS for a post.
      *
      * @return array<string, string>
      */
     public static function sources(): array
     {
-        return ['link' => __('Client upload link'), 'staff' => __('Team upload'), 'drive' => 'Google Drive', 'dropbox' => 'Dropbox', 'canva' => 'Canva', 'reel' => __('Reel made here')];
+        return ['link' => __('Client upload link'), 'staff' => __('Team upload'), 'drive' => 'Google Drive', 'dropbox' => 'Dropbox', 'canva' => 'Canva', 'reel' => __('Reel made here'), 'nas' => __('Office NAS')];
     }
 
     public function client(): BelongsTo
