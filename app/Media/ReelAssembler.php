@@ -19,12 +19,76 @@ final class ReelAssembler
 
     private const FONT = 'resources/fonts/InterTight-Bold.ttf';
 
-    /** The ffmpeg binary, or null when the server has none. */
+    /**
+     * The ffmpeg binary, or null when the server has none: FFMPEG_PATH (a full path, or a name looked up on the PATH), else a
+     * static ffmpeg the team uploaded to storage/bin/ffmpeg. Never throws: a path outside the folders the site may open (Plesk's
+     * open_basedir) used to raise a warning that Laravel turned into a 500 on the Files page (Panos, 2026-11-19).
+     */
     public static function binary(): ?string
     {
-        $path = (string) config('services.ffmpeg.path', 'ffmpeg');
+        $setting = (string) config('services.ffmpeg.path', 'ffmpeg');
+        $found = str_contains($setting, '/') ? (self::runnable($setting) ? $setting : null) : self::find($setting);
 
-        return str_contains($path, '/') ? (is_executable($path) ? $path : null) : (new ExecutableFinder)->find($path);
+        return $found ?? (self::runnable(self::bundled()) ? self::bundled() : null);
+    }
+
+    /** Where a static ffmpeg can go without root: inside the app, so the site may run it whatever its open_basedir. */
+    public static function bundled(): string
+    {
+        return storage_path('bin/ffmpeg');
+    }
+
+    /** Why there is no ffmpeg, in words for the Reel box; null when there is one. */
+    public static function problem(): ?string
+    {
+        if (self::binary() !== null) {
+            return null;
+        }
+        $setting = (string) config('services.ffmpeg.path', 'ffmpeg');
+        $instead = ['bundled' => self::bundled()];
+        if (str_contains($setting, '/')) {
+            return match (true) {
+                ! self::allowed($setting) => __('FFMPEG_PATH is :path, outside the folders this site may open, so it cannot run it. Upload ffmpeg to :bundled instead and set its permissions to 755.', ['path' => $setting] + $instead),
+                ! @is_file($setting) => __('There is no file at :path (FFMPEG_PATH). Upload ffmpeg to :bundled instead and set its permissions to 755.', ['path' => $setting] + $instead),
+                default => __('The file :path cannot be run: set its permissions to 755.', ['path' => $setting]),
+            };
+        }
+        if (@is_file(self::bundled())) {
+            return __('The file :path cannot be run: set its permissions to 755.', ['path' => self::bundled()]);
+        }
+
+        return __('Install ffmpeg on the server, or upload the static ffmpeg to :bundled and set its permissions to 755, to make Reels from clips (docs/pilot-setup.md).', $instead);
+    }
+
+    /** A file the site may run: no warning when it lies outside the folders the site may open. */
+    public static function runnable(string $path): bool
+    {
+        return self::allowed($path) && @is_file($path) && @is_executable($path);
+    }
+
+    /** Inside open_basedir (or no open_basedir at all). */
+    private static function allowed(string $path): bool
+    {
+        $base = (string) ini_get('open_basedir');
+        if ($base === '') {
+            return true;
+        }
+        foreach (explode(PATH_SEPARATOR, $base) as $dir) {
+            if ($dir !== '' && str_starts_with($path, $dir)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function find(string $name): ?string
+    {
+        try {
+            return @(new ExecutableFinder)->find($name);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

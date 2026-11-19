@@ -104,7 +104,7 @@ class ClientFilesController extends Controller
             'dropbox' => $client->accounts()->where('platform', 'dropbox')->first(),
             'dropboxReady' => (bool) config('services.dropbox.app_key'),
             'canvaReady' => (bool) config('services.canva.client_id'),
-            'reelReady' => ReelAssembler::binary() !== null,
+            'reelProblem' => ReelAssembler::problem(), // null when ffmpeg is there; else why not, in words
             'canvaDesigns' => $canvaDesigns,
             'canvaError' => $canvaError,
         ];
