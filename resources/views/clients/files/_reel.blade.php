@@ -1,8 +1,8 @@
 {{-- Make a Reel: 2 to 10 of the client's clips joined in the queue (AssembleReel), filed like an upload --}}
 <x-section icon="film" x-show="tab === 'reel'" x-cloak :title="__('Make a Reel')" :description="__('Joins 2 to 10 clips in file-name order, each cut to the chosen seconds, vertical 1080×1920 without sound. Add music in the Instagram app.')">
     <div class="py-5">
-        @if (! $reelReady)
-            <p class="text-sm text-gray-600">{{ __('Install ffmpeg on the server to assemble Reels from clips (docs/pilot-setup.md).') }}</p>
+        @if ($reelProblem)
+            <p class="text-sm text-gray-600">{{ $reelProblem }}</p>
         @elseif ($videos->count() < 2)
             <x-empty-state icon="film" :action="__('Add files')" action-icon="cloud-arrow-up" href="#media">{{ __('Upload at least two videos to make a Reel.') }}</x-empty-state>
         @else

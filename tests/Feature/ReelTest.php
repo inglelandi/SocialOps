@@ -34,7 +34,7 @@ test('the Files page offers a Reel once the client has two clips, and says so wh
     $this->actingAs($this->user)->get(route('clients.assets', $this->client))->assertOk()->assertSee('Make a Reel')->assertSee('In the Reel')->assertSee('Make the Reel')->assertDontSee('Upload at least two videos');
 
     config(['services.ffmpeg.path' => '/nowhere/ffmpeg']);
-    $this->actingAs($this->user)->get(route('clients.assets', $this->client))->assertOk()->assertSee('Install ffmpeg on the server')->assertDontSee('In the Reel');
+    $this->actingAs($this->user)->get(route('clients.assets', $this->client))->assertOk()->assertSee('There is no file at /nowhere/ffmpeg (FFMPEG_PATH).')->assertDontSee('In the Reel');
     $this->actingAs($this->user)->post(route('assets.reel', $this->client), ['clips' => [1, 2], 'seconds' => 3])->assertNotFound();
 })->skip(fn () => ReelAssembler::binary() === null, 'ffmpeg is not installed here');
 

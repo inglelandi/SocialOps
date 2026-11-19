@@ -327,7 +327,6 @@
     "In the Reel": "Στο Reel",
     "In the Reel: tick 2 to 10 clips": "Στο Reel: τσέκαρε 2 έως 10 κλιπ",
     "Instagram grid": "Πλέγμα Instagram",
-    "Install ffmpeg on the server to assemble Reels from clips (docs/pilot-setup.md).": "Εγκατάστησε ffmpeg στον server για να φτιάχνονται Reels από κλιπ (docs/pilot-setup.md).",
     "internal, the client never sees them; @FirstName pings a colleague on Slack": "εσωτερικές, ο πελάτης δεν τις βλέπει ποτέ· το @Όνομα ειδοποιεί συνάδελφο στο Slack",
     "It takes a minute: log in as the client's page admin, tick the same account, done.": "Παίρνει ένα λεπτό: σύνδεση ως διαχειριστής της σελίδας του πελάτη, τσεκάρεις τον ίδιο λογαριασμό, έτοιμο.",
     "Job": "Εργασία",
@@ -1112,5 +1111,9 @@
     "For the hourly Claude worker, the Inglelandi NAS connector has to be ticked on its scheduled task.": "Για την ωριαία εργασία του Claude, ο connector Inglelandi NAS πρέπει να είναι επιλεγμένος στην προγραμματισμένη εργασία της.",
     "No folder named yet.": "Δεν έχει οριστεί φάκελος ακόμη.",
     "Change it in the profile (Research)": "Αλλάξτε τον στο προφίλ (Έρευνα)",
-    ":n stored folders or files belong to another user on the server, so the backup cannot read them. In Plesk, have them given to the site's user (plesk repair fs with the domain).": ":n αποθηκευμένοι φάκελοι ή αρχεία ανήκουν σε άλλον χρήστη του server, οπότε το backup δεν μπορεί να τα διαβάσει. Στο Plesk, ζητήστε να δοθούν στον χρήστη του site (plesk repair fs με το domain)."
+    ":n stored folders or files belong to another user on the server, so the backup cannot read them. In Plesk, have them given to the site's user (plesk repair fs with the domain).": ":n αποθηκευμένοι φάκελοι ή αρχεία ανήκουν σε άλλον χρήστη του server, οπότε το backup δεν μπορεί να τα διαβάσει. Στο Plesk, ζητήστε να δοθούν στον χρήστη του site (plesk repair fs με το domain).",
+    "FFMPEG_PATH is :path, outside the folders this site may open, so it cannot run it. Upload ffmpeg to :bundled instead and set its permissions to 755.": "Το FFMPEG_PATH είναι :path, έξω από τους φακέλους που επιτρέπεται να ανοίγει αυτό το site, οπότε δεν μπορεί να το τρέξει. Ανέβασε το ffmpeg στο :bundled και δώσε του δικαιώματα 755.",
+    "There is no file at :path (FFMPEG_PATH). Upload ffmpeg to :bundled instead and set its permissions to 755.": "Δεν υπάρχει αρχείο στο :path (FFMPEG_PATH). Ανέβασε το ffmpeg στο :bundled και δώσε του δικαιώματα 755.",
+    "The file :path cannot be run: set its permissions to 755.": "Το αρχείο :path δεν μπορεί να τρέξει: δώσε του δικαιώματα 755.",
+    "Install ffmpeg on the server, or upload the static ffmpeg to :bundled and set its permissions to 755, to make Reels from clips (docs/pilot-setup.md).": "Εγκατάστησε ffmpeg στον server ή ανέβασε το static ffmpeg στο :bundled με δικαιώματα 755, για να φτιάχνονται Reels από κλιπ (docs/pilot-setup.md)."
 }

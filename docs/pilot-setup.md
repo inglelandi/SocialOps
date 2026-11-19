@@ -154,7 +154,9 @@ The "Make a Reel" section of the Files tab cuts ticked clips into one vertical R
 FFMPEG_PATH=/usr/bin/ffmpeg
 ```
 
-Without it the box says so and nothing else changes.
+Without root (only the site's own folders, as on most Plesk subscriptions): download the static build (`ffmpeg-release-amd64-static.tar.xz` from johnvansickle.com/ffmpeg), unpack it on your PC and upload only the `ffmpeg` file into the app's `storage/bin/` folder (it comes with the app, next to `storage/app`), then set its permissions to 755 in Plesk's File Manager. The app finds it there by itself; leave `FFMPEG_PATH` empty. A file outside the app's folders cannot be used: Plesk lets the site open only its own folders (`open_basedir`), and the Reel box then names the path and what to do.
+
+Without ffmpeg the box says why (not installed, no file at `FFMPEG_PATH`, a path outside the site's folders, a file without the 755 permissions) and nothing else changes.
 
 ## 6. First client: Fuse Pharmacy (decision D4)
 
