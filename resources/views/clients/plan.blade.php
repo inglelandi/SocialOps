@@ -133,7 +133,7 @@
                             @if ($nasFolder = \App\Planning\NasFolder::path($client))
                                 <span>{{ __('Claude also opens the client\'s folder “:folder” on the office NAS, through the Inglelandi NAS connector.', ['folder' => $nasFolder]) }}</span>
                             @else
-                                <a href="{{ route('clients.edit', $client) }}" class="font-medium text-gray-900 hover:text-brand-600">{{ __('Name the client\'s folder on the office NAS in the profile (Research), so Claude opens it too.') }}</a>
+                                <a href="{{ route('clients.edit', $client) }}#research" class="font-medium text-gray-900 hover:text-brand-600">{{ __('Name the client\'s folder on the office NAS in the profile (Research), so Claude opens it too.') }}</a>
                             @endif
                         </p>
                         @if ($claudeJobs->isNotEmpty())
